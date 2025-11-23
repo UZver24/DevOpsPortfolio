@@ -55,7 +55,23 @@ minikube ip
 # Затем откройте http://<minikube-ip>:30080
 ```
 
-### 4. Удаление
+### 4. Проверка работы
+
+```bash
+# Проверяем статус подов
+kubectl get pods
+
+# Проверяем логи
+kubectl logs -f deployment/backend
+kubectl logs -f deployment/frontend
+
+# Проверяем доступность через curl
+MINIKUBE_IP=$(minikube ip)
+curl http://$MINIKUBE_IP:30080
+curl http://$MINIKUBE_IP:30080/api/about
+```
+
+### 5. Удаление
 
 ```bash
 kubectl delete -f k8s/
@@ -68,4 +84,13 @@ kubectl delete -f k8s/
 - **Health checks**: Настроены liveness и readiness пробы
 - **Resources**: Ограничения по памяти и CPU для каждого контейнера
 - **ImagePullPolicy: Never**: Используем локальные образы в minikube
+
+## Результаты тестирования
+
+✅ Все поды успешно запускаются (4/4 Running)
+✅ Backend health check работает
+✅ Frontend доступен через NodePort (http://<minikube-ip>:30080)
+✅ API запросы через frontend работают корректно
+✅ Health checks (liveness/readiness) функционируют
+✅ Логи показывают нормальную работу сервисов
 
