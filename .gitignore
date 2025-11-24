@@ -61,6 +61,6 @@ infrastructure/**/crash.log
 infrastructure/**/.terraform.lock.hcl
 
 # Terraform secrets (облако)
-infrastructure/cloud/terraform.tfvars
-infrastructure/cloud/*.auto.tfvars
+infrastructure/**/terraform.tfvars
+infrastructure/**/*.auto.tfvars
 

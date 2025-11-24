@@ -101,7 +101,10 @@ resource "yandex_kubernetes_cluster" "main" {
   network_id  = yandex_vpc_network.main.id
   master {
     public_ip = true
-    subnet_ids = [yandex_vpc_subnet.public.id]
+    zonal {
+      zone      = var.yc_zone
+      subnet_id = yandex_vpc_subnet.public.id
+    }
     security_group_ids = [yandex_vpc_security_group.main.id]
   }
   service_account_id      = yandex_iam_service_account.k8s.id

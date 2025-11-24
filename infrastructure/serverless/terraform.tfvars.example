@@ -1,0 +1,19 @@
+yc_token = ""
+yc_cloud_id = ""
+yc_folder_id = ""
+
+backend_image = "cr.yandex/your_registry/backend:latest"
+backend_memory_mb = 256
+backend_cpu = 0.1
+backend_concurrency = 8
+backend_env = {}
+
+frontend_image = "cr.yandex/your_registry/frontend:latest"
+frontend_memory_mb = 128
+frontend_cpu = 0.05
+frontend_concurrency = 8
+frontend_env = {}
+
+
+
+
