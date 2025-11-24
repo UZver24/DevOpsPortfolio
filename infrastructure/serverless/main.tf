@@ -81,8 +81,13 @@ resource "yandex_serverless_container" "frontend" {
   execution_timeout = "30s"
 
   image {
-    url         = var.frontend_image
-    environment = var.frontend_env
+    url = var.frontend_image
+    environment = merge(
+      var.frontend_env,
+      {
+        API_BASE_URL = trimsuffix(yandex_serverless_container.backend.url, "/")
+      }
+    )
   }
 
   runtime {
