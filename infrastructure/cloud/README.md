@@ -94,4 +94,19 @@ provider "yandex" {
 
 ---
 
+## Получение kubeconfig для кластера
+
+- kubeconfig — файл с параметрами аутентификации и доступа к кластеру, необходим для kubectl, helm, CI/CD и работы с кластером из любого места.
+- После применения terraform достаточно выполнить одну команду:
+
+  ```bash
+  yc managed-kubernetes cluster get-credentials $(terraform output -raw k8s_cluster_id) --external
+  ```
+
+  Эта команда автоматически получает id только что созданного кластера через terraform output и подготавливает файл kubeconfig.
+
+- Без kubeconfig не получится деплоить приложения и управлять кластером!
+
+---
+
 > **Важно:** Не забудьте задокументировать переменные (`variables.tf`) и сохранить `README.md` всегда в актуальном виде!

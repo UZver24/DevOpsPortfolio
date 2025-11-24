@@ -1,12 +1,11 @@
-# outputs.tf — здесь будут выходные параметры инфраструктуры Yandex Cloud
+# outputs.tf — выходные параметры инфраструктуры Yandex Cloud
 
-# Здесь будут outputs, например:
-# output "external_ip" {
-#   value = yandex_compute_instance.app.network_interface[0].nat_ip_address
-#   description = "Внешний IP основной VM"
-# }
+output "k8s_cluster_id" {
+  value       = yandex_kubernetes_cluster.main.id
+  description = "ID созданного Kubernetes-кластера (используется в yc managed-kubernetes cluster get-credentials)"
+}
 
-# output "kubeconfig" {
-#   value = module.kubernetes.kubeconfig
-#   description = "kubeconfig для доступа в кластер"
-# }
+output "k8s_cluster_name" {
+  value       = yandex_kubernetes_cluster.main.name
+  description = "Имя созданного Kubernetes-кластера (альтернатива для выгрузки kubeconfig)"
+}

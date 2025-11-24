@@ -27,7 +27,7 @@
     - [x] Настройка доступа к облаку (установлен yc, выполнены yc init и yc config list)
     - [ ] Настройка инфраструктуры через Terraform для облака
       - [x] Подключение облачного provider в Terraform
-      - [ ] Описание VPC, подсетей, security group, VM или Managed Kubernetes Cluster
+      - [X] Описание VPC, подсетей, security group, VM или Managed Kubernetes Cluster
       - [ ] Генерация необходимых артефактов (kubeconfig, внешний IP и др.)
     - [ ] Публикация контейнеров (docker push в контейнерный registry Yandex)
     - [ ] Развёртывание приложения с помощью Helm (или kubectl)
