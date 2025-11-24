@@ -2,7 +2,7 @@
 
 Этот каталог содержит Kubernetes манифесты для развертывания приложения в кластере.
 
-## Что такое minikube и kubectl?
+## О minikube и kubectl
 
 **minikube** — инструмент для запуска локального Kubernetes кластера на одной машине. Он создает виртуальную машину (или использует Docker) с полноценным Kubernetes кластером для разработки и тестирования.
 
@@ -174,13 +174,3 @@ kubectl delete -f k8s/
 - **Resources**: Ограничения по памяти и CPU для каждого контейнера
 - **ImagePullPolicy: Never**: Используем локальные образы в minikube
 - **Универсальный nginx.conf**: Использует `backend:8000` - работает в Docker Compose, Kubernetes и Helm
-
-## Результаты тестирования
-
-✅ Все поды успешно запускаются (4/4 Running)
-✅ Backend health check работает
-✅ Frontend доступен через NodePort (http://<minikube-ip>:30080)
-✅ API запросы через frontend работают корректно
-✅ Health checks (liveness/readiness) функционируют
-✅ Логи показывают нормальную работу сервисов
-
