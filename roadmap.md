@@ -26,7 +26,7 @@
     - [x] Выбор облачного провайдера (Yandex Cloud)
     - [x] Настройка доступа к облаку (установлен yc, выполнены yc init и yc config list)
     - [ ] Настройка инфраструктуры через Terraform для облака
-      - [ ] Подключение облачного provider в Terraform
+      - [x] Подключение облачного provider в Terraform
       - [ ] Описание VPC, подсетей, security group, VM или Managed Kubernetes Cluster
       - [ ] Генерация необходимых артефактов (kubeconfig, внешний IP и др.)
     - [ ] Публикация контейнеров (docker push в контейнерный registry Yandex)
