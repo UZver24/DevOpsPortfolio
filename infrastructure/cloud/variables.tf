@@ -27,11 +27,6 @@ variable "yc_zone" {
   type        = string
 }
 
-variable "yc_sa_id" {
-  description = "ID сервисного аккаунта с необходимыми правами для кластера и узлов."
-  type        = string
-}
-
 variable "worker_platform_id" {
   description = "Тип VM для нод k8s (например, 'standard-v3')."
   type        = string

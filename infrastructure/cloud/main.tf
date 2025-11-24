@@ -73,35 +73,56 @@ resource "yandex_vpc_security_group" "main" {
 }
 
 # -----------------------------------------------------------
-# Создаём Managed Kubernetes Cluster в Яндекс.Облаке
+# Автоматическое создание сервисного аккаунта для управления кластером
+# -----------------------------------------------------------
+resource "yandex_iam_service_account" "k8s" {
+  name        = "${var.project_name}-k8s-sa"
+  description = "Service Account для управления Managed Kubernetes Cluster и worker-нодами"
+}
+
+# Назначение ролей сервисному аккаунту
+resource "yandex_resourcemanager_folder_iam_member" "k8s_admin" {
+  folder_id = var.yc_folder_id
+  role      = "k8s.admin"
+  member    = "serviceAccount:${yandex_iam_service_account.k8s.id}"
+}
+
+resource "yandex_resourcemanager_folder_iam_member" "container_registry_editor" {
+  folder_id = var.yc_folder_id
+  role      = "container-registry.editor"
+  member    = "serviceAccount:${yandex_iam_service_account.k8s.id}"
+}
+
+# -----------------------------------------------------------
+# Создаём Managed Kubernetes Cluster используя новый сервисный аккаунт
 # -----------------------------------------------------------
 resource "yandex_kubernetes_cluster" "main" {
   name        = "${var.project_name}-yk8s"
   network_id  = yandex_vpc_network.main.id
   master {
-    public_ip = true   # API endpoint K8s будет доступен из интернета (можно сделать false для приватного доступа)
+    public_ip = true
     subnet_ids = [yandex_vpc_subnet.public.id]
     security_group_ids = [yandex_vpc_security_group.main.id]
   }
-  service_account_id      = var.yc_sa_id
-  node_service_account_id = var.yc_sa_id
+  service_account_id      = yandex_iam_service_account.k8s.id
+  node_service_account_id = yandex_iam_service_account.k8s.id
   release_channel         = "STABLE"
 }
 
 # -----------------------------------------------------------
-# Создаём worker node group для кластера (автоматически управляющие VM)
+# Worker node group как раньше (использует тот же SA)
 # -----------------------------------------------------------
 resource "yandex_kubernetes_node_group" "ng1" {
   cluster_id = yandex_kubernetes_cluster.main.id
   name       = "${var.project_name}-nodes"
   instance_template {
-    platform_id = var.worker_platform_id   # например, "standard-v3"
+    platform_id = var.worker_platform_id
     resources {
-      memory = var.worker_memory_gb # GB
-      cores  = var.worker_cores     # CPU
+      memory = var.worker_memory_gb
+      cores  = var.worker_cores
     }
     boot_disk {
-      size = var.worker_disk_gb     # GB
+      size = var.worker_disk_gb
       type = "network-ssd"
     }
     network_interface {
@@ -110,12 +131,12 @@ resource "yandex_kubernetes_node_group" "ng1" {
       security_group_ids = [yandex_vpc_security_group.main.id]
     }
     scheduling_policy {
-      preemptible = true  # дешёвая автозаменяемая виртуалка для экономии в тестах/MVP
+      preemptible = true
     }
   }
   scale_policy {
     fixed_scale {
-      size = var.worker_node_count  # число рабочих машин в начале
+      size = var.worker_node_count
     }
   }
   allocation_policy {
