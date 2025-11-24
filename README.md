@@ -200,14 +200,6 @@ curl http://localhost:8000/api/about
 docker stop backend-test
 docker rm backend-test
 ```
-
-**Результаты тестирования:**
-- ✅ Backend образ успешно собирается
-- ✅ Backend контейнер запускается и отвечает на запросы
-- ✅ Health check эндпоинт работает
-- ✅ API эндпоинты возвращают корректные данные
-- ✅ Frontend образ успешно собирается (multi-stage build)
-
 ### Запуск через Docker Compose
 
 Для удобного запуска всего приложения используйте Docker Compose:
@@ -256,14 +248,6 @@ docker-compose up -d
 - Сервисы общаются через внутреннюю сеть `portfolio-network`
 - Backend доступен для frontend по универсальному имени `backend:8000` (работает во всех случаях развертывания)
 - Автоматический перезапуск контейнеров при сбоях (`restart: unless-stopped`)
-
-**Результаты тестирования Docker Compose:**
-- ✅ Оба сервиса успешно запускаются
-- ✅ Backend health check работает
-- ✅ Frontend проксирует API запросы к backend
-- ✅ Приложение доступно через http://localhost
-- ✅ API доступно напрямую через http://localhost:8000
-- ✅ Логи доступны через `docker-compose logs`
 
 ## ☸️ Локальное развертывание в Kubernetes (minikube)
 
