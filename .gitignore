@@ -53,3 +53,10 @@ logs/
 # OS
 Thumbs.db
 
+# Terraform artifacts (infrastructure)
+infrastructure/**/.terraform/
+infrastructure/**/*.tfstate
+infrastructure/**/*.tfstate.*
+infrastructure/**/crash.log
+infrastructure/**/.terraform.lock.hcl
+
