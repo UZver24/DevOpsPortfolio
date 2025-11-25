@@ -38,7 +38,7 @@
         - [x] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
         - [x] Проверка, что приложение доступно из Интернета
   - [ ] Настраиваем CI/CD пайплайн
-    - [ ] Настроить GitHub Actions/GitLab CI для сборки backend-образа и публикации в YCR
+    - [x] Настроить GitHub Actions/GitLab CI для сборки backend-образа и публикации в YCR
     - [ ] Добавить шаг сборки фронтенда и выгрузки `dist` в Object Storage через CLI
     - [ ] Подготовить отдельный job для `terraform apply`/`yc serverless` после публикации артефактов
     - [ ] Подключить секреты (tokens/keys) и уведомления о статусе пайплайна
