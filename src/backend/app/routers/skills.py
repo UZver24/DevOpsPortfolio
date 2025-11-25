@@ -13,7 +13,7 @@ async def get_skills():
     return SkillsResponse(
         categories=[
             {
-                "name": "Контейнеризация",
+                "name": "Контейнеризация и оркестрация",
                 "items": ["Docker", "Docker Compose", "Kubernetes", "Helm"]
             },
             {
@@ -25,24 +25,36 @@ async def get_skills():
                 "items": ["Terraform", "Ansible"]
             },
             {
-                "name": "Мониторинг",
-                "items": ["Prometheus", "Grafana", "ELK Stack", "Loki"]
-            },
-            {
-                "name": "GitOps",
-                "items": ["ArgoCD", "Flux"]
+                "name": "Мониторинг и логирование",
+                "items": ["Yandex Monitoring", "Yandex Logging", "Prometheus", "Grafana", "ELK Stack", "Loki"]
             },
             {
                 "name": "Облачные платформы",
-                "items": ["Yandex Cloud", "AWS", "GCP"]
+                "items": ["Yandex Cloud", "Yandex Serverless Containers", "Yandex Container Registry", "Yandex Object Storage", "Yandex API Gateway"]
             },
             {
                 "name": "Языки программирования",
-                "items": ["Python", "Bash", "Go"]
+                "items": ["Python", "Go", "C/C++", "C#", "Bash", "RegExp"]
+            },
+            {
+                "name": "Системное администрирование",
+                "items": ["Linux", "Windows Server 2003/2008 R2", "DHCP", "NTP", "Администрирование серверов"]
             },
             {
                 "name": "Базы данных",
-                "items": ["PostgreSQL", "MongoDB", "Redis"]
+                "items": ["MS SQL Server", "PostgreSQL", "MongoDB", "Redis"]
+            },
+            {
+                "name": "Инструменты разработки",
+                "items": ["MS Visual Studio", "Visual Studio C#", "Git", "GitLab"]
+            },
+            {
+                "name": "CAD/CAM системы",
+                "items": ["Компас-3D", "KiCAD", "FreeCAD", "Blender", "P-CAD", "Altium Designer", "MATLAB", "HFSS"]
+            },
+            {
+                "name": "Дополнительные навыки",
+                "items": ["FinOps", "DevSecOps практики", "Проектирование электроники", "3D-моделирование", "Разработка прошивок для микроконтроллеров"]
             }
         ]
     )

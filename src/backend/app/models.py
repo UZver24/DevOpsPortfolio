@@ -8,23 +8,23 @@ from pydantic import BaseModel, EmailStr
 class AboutResponse(BaseModel):
     """Модель информации о себе"""
     name: str
-    title: str
+    title: Optional[str] = None
     description: str
     bio: str
-    location: str
-    email: EmailStr
+    location: Optional[str] = None
+    email: Optional[EmailStr] = None
     github: str
 
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "UZver24",
-                "title": "DevOps Engineer",
-                "description": "Опытный DevOps инженер",
-                "bio": "Специализируюсь на...",
-                "location": "Россия",
-                "email": "m-kar@inbox.ru",
-                "github": "https://github.com/UZver24"
+                "name": "Имя Фамилия",
+                "title": None,
+                "description": "Описание",
+                "bio": "Биография...",
+                "location": None,
+                "email": None,
+                "github": "https://github.com/username"
             }
         }
 
@@ -57,7 +57,7 @@ class ProjectsResponse(BaseModel):
 
 class ContactResponse(BaseModel):
     """Модель контактов"""
-    email: EmailStr
+    email: Optional[EmailStr] = None
     github: str
     linkedin: Optional[str] = None
     telegram: Optional[str] = None

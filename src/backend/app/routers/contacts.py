@@ -11,9 +11,9 @@ router = APIRouter()
 async def get_contacts():
     """Получить контактную информацию"""
     return ContactResponse(
-        email="m-kar@inbox.ru",
+        email=None,
         github="https://github.com/UZver24",
         linkedin=None,
-        telegram=None
+        telegram="@Kulibin2024"
     )
 
