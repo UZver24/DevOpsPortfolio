@@ -8,8 +8,12 @@
 
 | Переменная | Описание | Тип | Где получить |
 |------------|----------|-----|-------------|
-| `YC_IAM_TOKEN` | IAM-токен для Docker login в Container Registry | **Secret** | `yc iam create-token` (действителен 12 часов) |
+| `YC_IAM_TOKEN` | IAM-токен для Docker login и Terraform | **Secret** | `yc iam create-token` (действителен 12 часов) |
 | `REGISTRY_ID` | ID Container Registry в Yandex Cloud | **Variable** или **Secret** | Из `terraform.tfvars` или `yc container registry list` |
+| `YC_CLOUD_ID` | ID облака в Yandex Cloud | **Secret** | `yc config list` (поле `cloud-id`) |
+| `YC_FOLDER_ID` | ID каталога в Yandex Cloud | **Secret** | `yc config list` (поле `folder-id`) |
+| `YC_ZONE` | Зона размещения ресурсов | **Variable** или **Secret** | Обычно `ru-central1-a` |
+| `STATIC_BUCKET_NAME` | Имя бакета для статического фронтенда | **Variable** или **Secret** | Например, `kulibin-devops-portfolio` |
 
 > **⚠️ Важно**: Для Docker login в Yandex Container Registry **необходим IAM-токен** (получается через `yc iam create-token`). IAM-токен действителен только 12 часов, поэтому его нужно периодически обновлять в секретах GitHub.
 
@@ -28,14 +32,17 @@ yc iam create-token
 
 > **⚠️ ВАЖНО**: IAM-токен действителен только **12 часов**! После истечения нужно создать новый токен и обновить секрет в GitHub.
 
-### 2. Получение REGISTRY_ID
+### 2. Получение остальных значений
 
 ```bash
-# Посмотреть список реестров
+# Посмотреть конфигурацию (cloud_id, folder_id)
+yc config list
+
+# Посмотреть список реестров (registry_id)
 yc container registry list
 
-# Или взять из terraform.tfvars
-# container_registry_id = "crp50gpc30l3tbd4rtj0"
+# Зона обычно: ru-central1-a
+# Имя бакета: например, kulibin-devops-portfolio
 ```
 
 #### REGISTRY_ID
@@ -67,19 +74,24 @@ yc container registry list
 > - IAM-токен действителен только 12 часов, после истечения нужно обновить секрет
 > - Для автоматизации можно использовать сервисный аккаунт (см. раздел "Автоматизация обновления токена" ниже)
 
-#### Для REGISTRY_ID (Variable или Secret):
+#### Для остальных секретов:
 
-**Вариант 1: Как переменная (рекомендуется, если это не секрет)**
-1. Нажмите **New repository variable**
-2. **Name**: `REGISTRY_ID`
-3. **Value**: `crp50gpc30l3tbd4rtj0` (ваш Registry ID)
-4. Нажмите **Add variable**
+Добавьте следующие секреты/переменные:
 
-**Вариант 2: Как секрет (если хотите скрыть)**
-1. Нажмите **New repository secret**
-2. **Name**: `REGISTRY_ID`
-3. **Secret**: `crp50gpc30l3tbd4rtj0`
-4. Нажмите **Add secret**
+1. **REGISTRY_ID** (Variable или Secret):
+   - Значение: `crp50gpc30l3tbd4rtj0` (ваш Registry ID)
+
+2. **YC_CLOUD_ID** (Secret):
+   - Значение: из `yc config list` (поле `cloud-id`)
+
+3. **YC_FOLDER_ID** (Secret):
+   - Значение: из `yc config list` (поле `folder-id`)
+
+4. **YC_ZONE** (Variable или Secret):
+   - Значение: `ru-central1-a` (или другая зона)
+
+5. **STATIC_BUCKET_NAME** (Variable или Secret):
+   - Значение: `kulibin-devops-portfolio` (или другое имя бакета)
 
 ### 4. Проверка настроек
 

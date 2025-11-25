@@ -63,6 +63,31 @@ jobs:
         with:
           terraform_version: 1.6.6
 
+      - name: Create terraform.tfvars
+        working-directory: infrastructure/serverless
+        run: |
+          cat > terraform.tfvars <<EOF
+          yc_token = "${{ secrets.YC_IAM_TOKEN }}"
+          yc_cloud_id = "${{ secrets.YC_CLOUD_ID }}"
+          yc_folder_id = "${{ secrets.YC_FOLDER_ID }}"
+          yc_zone = "${{ secrets.YC_ZONE }}"
+          
+          backend_image = "cr.yandex/${{ secrets.REGISTRY_ID }}/backend:${{ env.IMAGE_TAG }}"
+          frontend_image = "cr.yandex/${{ secrets.REGISTRY_ID }}/frontend:latest"
+          
+          container_registry_id = "${{ secrets.REGISTRY_ID }}"
+          
+          static_bucket_name = "${{ secrets.STATIC_BUCKET_NAME }}"
+          static_allowed_origins = [
+            "https://${{ secrets.STATIC_BUCKET_NAME }}.website.yandexcloud.net",
+          ]
+          api_allowed_origins = [
+            "https://${{ secrets.STATIC_BUCKET_NAME }}.website.yandexcloud.net",
+            "http://localhost:3000",
+            "http://localhost:5173",
+          ]
+          EOF
+
       - name: Terraform Init
         working-directory: infrastructure/serverless
         env:
