@@ -17,7 +17,7 @@
 ## Сравнение с вариантом “Managed Service for Kubernetes”
 - K8s-подход требует целого кластера, что стоит больше 1000 ₽/мес (даже минимум), и требует отдельной настройки ingress/CI/CD
 - Вариант serverless не требует VM, оплачивается по-микросекундам, идеально для development, прототипирования, портфолио
-- K8s-манифесты и инфраструктура тут НЕ реализованы (разрабатывается отдельно; подробнее см. папку cloud/ и README там)
+- K8s-манифесты и инфраструктура тут НЕ реализованы (разрабатывается отдельно; подробнее см. папку `cloudK8/` и README там)
 
 ---
 
@@ -28,45 +28,60 @@
 
 ## Пошаговая инструкция
 
-1. **Соберите Docker-образы**
+1. **Соберите Docker-образ backend**
    ```bash
    docker build -t backend:latest ../../backend
-   docker build -t frontend:latest ../../frontend
    ```
-2. **Создайте (или возьмите существующий) реестр YCR**
+2. **Создайте (или возьмите существующий) реестр YCR и запушьте образ**
    ```bash
-   yc container registry create --name devops-portfolio
-   yc container registry list  # чтобы узнать <registry_id>
-   ```
-3. **Залогиньтесь в реестр и запушьте образы**
-   ```bash
+   yc container registry create --name devops-portfolio   # при отсутствии
    yc iam create-token | docker login --username oauth --password-stdin cr.yandex
    docker tag backend:latest  cr.yandex/<registry_id>/backend:latest
-   docker tag frontend:latest cr.yandex/<registry_id>/frontend:latest
    docker push cr.yandex/<registry_id>/backend:latest
-   docker push cr.yandex/<registry_id>/frontend:latest
    ```
-4. **Заполните `infrastructure/serverless/terraform.tfvars`**
+3. **Заполните `infrastructure/serverless/terraform.tfvars`**
    ```hcl
-   yc_token              = "..."            # результат yc iam create-token
-   yc_cloud_id           = "..."            # yc config list
-   yc_folder_id          = "..."
-   yc_zone               = "ru-central1-a"
+   yc_token      = "..."         # yc iam create-token
+   yc_cloud_id   = "..."         # yc config list
+   yc_folder_id  = "..."
+   yc_zone       = "ru-central1-a"
+   environment   = "dev"
+
    backend_image         = "cr.yandex/<registry_id>/backend:latest"
-   frontend_image        = "cr.yandex/<registry_id>/frontend:latest"
-   container_registry_id = "<registry_id>"  # нужен для выдачи роли puller
+   container_registry_id = "<registry_id>"
+
+   static_bucket_name = "kulibin-devops-portfolio"
+   static_allowed_origins = ["https://kulibin-devops-portfolio.website.yandexcloud.net"]
+   api_allowed_origins    = ["https://kulibin-devops-portfolio.website.yandexcloud.net"]
    ```
-   При необходимости добавьте карты `backend_env` / `frontend_env` в `terraform.tfvars`.
-5. **Примените Terraform**
+   `enable_frontend_container = false` — фронтенд отдаём из Object Storage. В дальнейшем можно включить контейнер, если потребуется.
+4. **Примените Terraform**
    ```bash
    cd infrastructure/serverless
    terraform init
    terraform apply
    ```
-   Скрипт создаст сервисный аккаунт, выдаст нужные IAM-ролли и опубликует два Serverless Container.
-6. **Получите публичные URL** — Terraform выведет `backend_url` и `frontend_url`. Проверьте их вручную, чтобы убедиться, что приложение отвечает.
+   Конфигурация создаст:
+   - serverless container для backend;
+   - Object Storage + ключи для выкладки статики;
+   - API Gateway, который проксирует запросы на backend.
+5. **Соберите и загрузите фронтенд**
+   ```bash
+   export API_URL=$(terraform output -raw api_gateway_endpoint)
+   cd ../../frontend
+   VITE_API_BASE_URL=$API_URL npm run build
 
-> Сборка и публикация образов сейчас выполняются вручную (см. шаги 1‑3). Позже можно автоматизировать их через CI/CD (GitHub Actions, GitLab, Yandex Cloud Builder и т.д.), но для MVP это не обязательно.
+   cd ..
+   export AWS_ACCESS_KEY_ID=$(terraform -chdir=infrastructure/serverless output -raw static_site_access_key)
+   export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=infrastructure/serverless output -raw static_site_secret_key)
+   yc storage s3 cp --recursive frontend/dist/ s3://$(terraform -chdir=infrastructure/serverless output -raw static_bucket_name)
+   ```
+6. **Проверьте URLs**
+   - `terraform output backend_url` — прямой доступ к контейнеру (для отладки).
+   - `terraform output api_gateway_endpoint` — адрес API, на который ходит фронт.
+   - `terraform output static_site_endpoint` — адрес статического сайта (`https://<bucket>.website.yandexcloud.net`).
+
+> Сборка и публикация сейчас выполняются вручную. Позже можно автоматизировать их в CI/CD, чтобы push образа/статического билда автоматически триггерил Terraform или `yc` скрипты.
 
 ---
 

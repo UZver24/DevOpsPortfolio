@@ -17,12 +17,15 @@ function App() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+      const buildUrl = (path) => `${apiBaseUrl}${path}`
+
       try {
         const [aboutRes, skillsRes, projectsRes, contactsRes] = await Promise.all([
-          fetch('/api/about'),
-          fetch('/api/skills'),
-          fetch('/api/projects'),
-          fetch('/api/contacts')
+          fetch(buildUrl('/api/about')),
+          fetch(buildUrl('/api/skills')),
+          fetch(buildUrl('/api/projects')),
+          fetch(buildUrl('/api/contacts'))
         ])
 
         setAbout(await aboutRes.json())

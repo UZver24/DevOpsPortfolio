@@ -1,0 +1,48 @@
+openapi: 3.0.0
+info:
+  title: DevOps Portfolio API Gateway
+  version: 1.0.0
+x-yc-apigateway-cors:
+  allowOrigins:
+%{ for origin in allowed_origins ~}
+    - "${origin}"
+%{ endfor ~}
+  allowMethods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowHeaders:
+    - "*"
+  exposeHeaders:
+    - "*"
+paths:
+  /:
+    get:
+      summary: Backend root
+      operationId: root
+      responses:
+        "200":
+          description: OK
+      x-yc-apigateway-integration:
+        type: http
+        httpMethod: GET
+        url: ${backend_base_url}/
+  /api/{proxy+}:
+    x-yc-apigateway-any-method:
+      summary: Proxy API calls
+      parameters:
+        - name: proxy
+          in: path
+          required: true
+          schema:
+            type: string
+      x-yc-apigateway-integration:
+        type: http
+        httpMethod: ANY
+        url: ${backend_base_url}/api/{proxy}
+        headers:
+          X-Forwarded-Host: "{request.path.host}"
+

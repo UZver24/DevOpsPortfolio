@@ -14,8 +14,8 @@
 
 ## 2. Варианты «front door»
 
-### 2.1 Object Storage + Cloud CDN + API Gateway (выбранный план)
-* **Frontend**: React билд лежит в бакете, CDN выдаёт `https://example.ru`.  
+### 2.1 Object Storage + Cloud CDN + API Gateway (текущий план)
+* **Frontend**: React билд лежит в бакете (`kulibin-devops-portfolio.website.yandexcloud.net`), при необходимости навешиваем CDN/домен.  
 * **Backend**: Yandex API Gateway проксирует `https://api.example.ru` → serverless backend.  
 * **Плюсы**: минимальная стоимость, полностью serverless, легко скейлиться.  
 * **Минусы**: две сущности (CDN + Gateway), нужно продумать CORS/авторизацию.
@@ -55,8 +55,8 @@
 
 ## 5. Практические рекомендации
 
-- Terraform делим на модули: `infrastructure/serverless` (приложение) и новый модуль `infrastructure/network` (DNS, CDN, API Gateway).  
-- Frontend container не удаляем из кода, а просто не задействуем в манифестах, чтобы можно было вернуть.  
+- Вся IaC собрана в `infrastructure/serverless`: backend контейнер, статический бакет и API Gateway управляются из одного Terraform state.  
+- Frontend container оставлен опциональным (флаг `enable_frontend_container`), но по умолчанию используем Object Storage + API Gateway.  
 - Секреты/URL backend — через Terraform outputs → Terraform Cloud/Secret Manager → API Gateway.  
 - Мониторим реальные затраты через Yandex Cost Management и фиксируем значения в FinOps.md после каждого релиза.
 

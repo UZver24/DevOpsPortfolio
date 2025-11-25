@@ -25,6 +25,18 @@ variable "project_name" {
   default     = "devops-portfolio-serverless"
 }
 
+variable "environment" {
+  description = "Окружение (dev/stage/prod) для тегов."
+  type        = string
+  default     = "dev"
+}
+
+variable "extra_labels" {
+  description = "Дополнительные теги для ресурсов."
+  type        = map(string)
+  default     = {}
+}
+
 variable "backend_image" {
   description = "Публичный URL docker-образа backend-API (например, из Yandex Container Registry)"
   type        = string
@@ -83,9 +95,56 @@ variable "frontend_env" {
   default     = {}
 }
 
+variable "enable_frontend_container" {
+  description = "Включить ли развёртывание frontend как serverless контейнера (по умолчанию используем Object Storage)."
+  type        = bool
+  default     = false
+}
+
 variable "container_registry_id" {
   description = "ID реестра образов (например crp50gpc30l3tbd4rtj0)."
   type        = string
+}
+
+variable "static_bucket_name" {
+  description = "Имя бакета для статического фронтенда (должно быть уникальным)."
+  type        = string
+}
+
+variable "static_default_storage_class" {
+  description = "Класс хранения (standard / cold / ice)."
+  type        = string
+  default     = "standard"
+}
+
+variable "static_max_size" {
+  description = "Максимальный размер бакета в байтах (0 = без ограничений)."
+  type        = number
+  default     = 0
+}
+
+variable "static_index_document" {
+  description = "Главная страница статического сайта."
+  type        = string
+  default     = "index.html"
+}
+
+variable "static_error_document" {
+  description = "Страница ошибки (для SPA можно оставить index.html)."
+  type        = string
+  default     = "index.html"
+}
+
+variable "static_allowed_origins" {
+  description = "Разрешённые домены (CORS) для доступа к статике."
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "api_allowed_origins" {
+  description = "Origin'ы, которым API Gateway разрешает доступ."
+  type        = list(string)
+  default     = ["https://example.website.yandexcloud.net", "http://localhost:3000", "http://localhost:5173"]
 }
 
 

@@ -32,11 +32,12 @@
     - [x] Развёртывание через terraform и получение публичных endpoint-адресов
     - [x] Тестирование развернутых сервисов через endpoints (по отдельности)
     - [ ] Настройки сети внутри облака
-        - [ ] Заказать «красивое» доменное имя и подключить DNS-зону
+        - [x] Настроить статический хостинг фронтенда в Object Storage (`kulibin-devops-portfolio.website.yandexcloud.net`)
         - [ ] Выпустить TLS-сертификаты через Yandex Certificate Manager (для `app` и `api`)
-        - [ ] Перенести frontend в Object Storage + Cloud CDN (Terraform, отключить serverless frontend container)
-        - [ ] Настроить API Gateway как прокси к backend serverless container (публичный URL `api.domain`)
-        - [ ] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
+        - [x] Перенести frontend в Object Storage (Terraform, отключить serverless frontend container)
+        - [ ] Подключить Cloud CDN / кастомный домен
+        - [x] Настроить API Gateway как прокси к backend serverless container (публичный URL `api`)
+        - [x] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
         - [ ] Прописать DNS записи (`A/CNAME`) на CDN и API Gateway, проверить доступность
         - [ ] Задокументировать процесс и подготовить Terraform к возможному переходу на ALB
   - [ ] Публикация Docker образов в Container Registry (автоматизировать push)
