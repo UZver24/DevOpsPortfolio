@@ -377,56 +377,89 @@ jobs:
           name: terraform-state
           path: infrastructure/serverless/
           retention-days: 1
-  #
-  # build-frontend:
-  #   name: Build and Deploy Frontend
-  #   runs-on: ubuntu-latest
-  #   needs: deploy-infra
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Download Terraform artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: terraform-state
-  #         path: infrastructure/serverless/
-  #
-  #     - name: Install Yandex Cloud CLI
-  #       run: |
-  #         curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-  #         echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-  #         yc --version
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #         cache: 'npm'
-  #         cache-dependency-path: frontend/package-lock.json
-  #
-  #     - name: Extract Terraform outputs
-  #       working-directory: infrastructure/serverless
-  #       run: |
-  #         export API_GATEWAY_ENDPOINT=$(jq -r '.api_gateway_endpoint.value' terraform-outputs.json)
-  #         export STATIC_BUCKET_NAME=$(jq -r '.static_bucket_name.value' terraform-outputs.json)
-  #         export AWS_ACCESS_KEY_ID=$(jq -r '.static_site_access_key.value' terraform-outputs.json)
-  #         export AWS_SECRET_ACCESS_KEY=$(jq -r '.static_site_secret_key.value' terraform-outputs.json)
-  #         echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}" >> $GITHUB_ENV
-  #         echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}" >> $GITHUB_ENV
-  #         echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> $GITHUB_ENV
-  #         echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> $GITHUB_ENV
-  #         echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}"
-  #         echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}"
-  #
-  #     - name: Build and deploy frontend
-  #       working-directory: CI
-  #       env:
-  #         API_GATEWAY_ENDPOINT: ${{ env.API_GATEWAY_ENDPOINT }}
-  #         STATIC_BUCKET_NAME: ${{ env.STATIC_BUCKET_NAME }}
-  #         AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
-  #         AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-  #       run: |
-  #         chmod +x build_frontend.sh
-  #         ./build_frontend.sh
+  build-frontend:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Terraform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-state
+          path: infrastructure/serverless/
+
+      - name: Install Yandex Cloud CLI
+        run: |
+          curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
+          yc --version
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Extract Terraform outputs
+        working-directory: infrastructure/serverless
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: |
+          export STATIC_BUCKET_NAME=$(jq -r '.static_bucket_name.value' terraform-outputs.json)
+          export AWS_ACCESS_KEY_ID=$(jq -r '.static_site_access_key.value' terraform-outputs.json)
+          export AWS_SECRET_ACCESS_KEY=$(jq -r '.static_site_secret_key.value' terraform-outputs.json)
+          
+          # Получаем API Gateway endpoint (может быть null если не создан)
+          API_GATEWAY_ENDPOINT=$(jq -r '.api_gateway_endpoint.value // empty' terraform-outputs.json)
+          
+          # Если API Gateway не был создан (null), пробуем получить endpoint существующего через yc CLI
+          if [ -z "$API_GATEWAY_ENDPOINT" ] || [ "$API_GATEWAY_ENDPOINT" = "null" ]; then
+            echo "ℹ️  API Gateway endpoint not in Terraform output (may already exist)"
+            echo "Attempting to get API Gateway endpoint via yc CLI..."
+            
+            # Устанавливаем yc CLI если еще не установлен
+            if ! command -v yc &> /dev/null; then
+              curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash >/dev/null 2>&1
+              export PATH="$PATH:$HOME/yandex-cloud/bin"
+            fi
+            
+            # Настраиваем авторизацию
+            export YC_TOKEN="$YC_TOKEN"
+            yc config set token "$YC_TOKEN" >/dev/null 2>&1 || true
+            yc config set folder-id "${{ secrets.YC_FOLDER_ID }}" >/dev/null 2>&1 || true
+            
+            # Пробуем получить endpoint существующего API Gateway
+            API_GATEWAY_NAME="devops-portfolio-serverless-api"
+            API_GATEWAY_DOMAIN=$(yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json 2>/dev/null | jq -r '.domain // empty' || echo "")
+            
+            if [ -n "$API_GATEWAY_DOMAIN" ] && [ "$API_GATEWAY_DOMAIN" != "null" ]; then
+              API_GATEWAY_ENDPOINT="https://${API_GATEWAY_DOMAIN}"
+              echo "✓ Found existing API Gateway endpoint: $API_GATEWAY_ENDPOINT"
+            else
+              echo "✗ Could not get API Gateway endpoint (may not exist or yc auth failed)"
+              echo "⚠️  Frontend build may fail if API_GATEWAY_ENDPOINT is required"
+            fi
+          fi
+          
+          echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}" >> $GITHUB_ENV
+          echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> $GITHUB_ENV
+          echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}"
+          echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}"
+
+      - name: Build and deploy frontend
+        working-directory: CI
+        env:
+          API_GATEWAY_ENDPOINT: ${{ env.API_GATEWAY_ENDPOINT }}
+          STATIC_BUCKET_NAME: ${{ env.STATIC_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          chmod +x build_frontend.sh
+          ./build_frontend.sh
 
