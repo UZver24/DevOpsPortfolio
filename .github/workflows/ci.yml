@@ -409,6 +409,8 @@ jobs:
         working-directory: infrastructure/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
         run: |
           # Добавляем путь к yc CLI в PATH (если установлен в предыдущем шаге)
           export PATH="$PATH:$HOME/yandex-cloud/bin"
@@ -418,10 +420,13 @@ jobs:
           export AWS_SECRET_ACCESS_KEY=$(jq -r '.static_site_secret_key.value' terraform-outputs.json)
           
           # Получаем API Gateway endpoint (может быть null если не создан)
-          API_GATEWAY_ENDPOINT=$(jq -r '.api_gateway_endpoint.value // empty' terraform-outputs.json)
+          API_GATEWAY_ENDPOINT_RAW=$(jq -r '.api_gateway_endpoint.value' terraform-outputs.json)
           
-          # Если API Gateway не был создан (null), пробуем получить endpoint существующего через yc CLI
-          if [ -z "$API_GATEWAY_ENDPOINT" ] || [ "$API_GATEWAY_ENDPOINT" = "null" ]; then
+          # Проверяем, что это не null и не пустая строка
+          if [ "$API_GATEWAY_ENDPOINT_RAW" != "null" ] && [ -n "$API_GATEWAY_ENDPOINT_RAW" ]; then
+            API_GATEWAY_ENDPOINT="$API_GATEWAY_ENDPOINT_RAW"
+            echo "✓ API Gateway endpoint from Terraform: $API_GATEWAY_ENDPOINT"
+          else
             echo "ℹ️  API Gateway endpoint not in Terraform output (may already exist)"
             echo "Attempting to get API Gateway endpoint via yc CLI..."
             
@@ -433,19 +438,46 @@ jobs:
             
             # Настраиваем авторизацию
             export YC_TOKEN="$YC_TOKEN"
-            yc config set token "$YC_TOKEN" >/dev/null 2>&1 || true
-            yc config set folder-id "${{ secrets.YC_FOLDER_ID }}" >/dev/null 2>&1 || true
+            yc config set token "$YC_TOKEN" || true
+            yc config set folder-id "$YC_FOLDER_ID" || true
+            yc config set cloud-id "$YC_CLOUD_ID" || true
+            
+            # Проверяем авторизацию
+            if ! yc iam service-account list --format json >/dev/null 2>&1; then
+              echo "⚠️  yc authentication failed, trying alternative method..."
+              # Пробуем через переменные окружения
+              export YC_TOKEN="$YC_TOKEN"
+            fi
             
             # Пробуем получить endpoint существующего API Gateway
             API_GATEWAY_NAME="devops-portfolio-serverless-api"
-            API_GATEWAY_DOMAIN=$(yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json 2>/dev/null | jq -r '.domain // empty' || echo "")
+            echo "Looking for API Gateway: $API_GATEWAY_NAME"
             
-            if [ -n "$API_GATEWAY_DOMAIN" ] && [ "$API_GATEWAY_DOMAIN" != "null" ]; then
+            # Сначала пробуем через get по имени
+            API_GATEWAY_DOMAIN=$(yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json 2>&1 | jq -r '.domain // empty' || echo "")
+            
+            # Если не получилось, пробуем через list и фильтрацию
+            if [ -z "$API_GATEWAY_DOMAIN" ] || [ "$API_GATEWAY_DOMAIN" = "null" ]; then
+              echo "Trying to list all API Gateways..."
+              API_GATEWAY_DOMAIN=$(yc serverless api-gateway list --format json 2>&1 | jq -r ".[] | select(.name == \"$API_GATEWAY_NAME\") | .domain // empty" || echo "")
+            fi
+            
+            if [ -n "$API_GATEWAY_DOMAIN" ] && [ "$API_GATEWAY_DOMAIN" != "null" ] && [ "$API_GATEWAY_DOMAIN" != "" ]; then
               API_GATEWAY_ENDPOINT="https://${API_GATEWAY_DOMAIN}"
               echo "✓ Found existing API Gateway endpoint: $API_GATEWAY_ENDPOINT"
             else
-              echo "✗ Could not get API Gateway endpoint (may not exist or yc auth failed)"
-              echo "⚠️  Frontend build may fail if API_GATEWAY_ENDPOINT is required"
+              echo "✗ Could not get API Gateway endpoint"
+              echo "  API Gateway may not exist or yc authentication failed"
+              echo "  Attempting to use backend URL directly..."
+              # Пробуем использовать backend URL напрямую
+              BACKEND_URL=$(jq -r '.backend_url.value' terraform-outputs.json)
+              if [ -n "$BACKEND_URL" ] && [ "$BACKEND_URL" != "null" ]; then
+                API_GATEWAY_ENDPOINT="$BACKEND_URL"
+                echo "⚠️  Using backend URL as fallback: $API_GATEWAY_ENDPOINT"
+              else
+                echo "✗ No API Gateway endpoint available and no backend URL found"
+                exit 1
+              fi
             fi
           fi
           
