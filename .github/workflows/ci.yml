@@ -105,9 +105,13 @@ jobs:
           export PATH="$PATH:$HOME/yandex-cloud/bin"
           
           # Авторизуемся в yc через токен
-          echo "$YC_TOKEN" | yc config profile create ci-profile || true
           yc config set token "$YC_TOKEN"
           yc config set folder-id "${{ secrets.YC_FOLDER_ID }}"
+          yc config set cloud-id "${{ secrets.YC_CLOUD_ID }}"
+          
+          # Проверяем авторизацию
+          echo "Testing yc authentication..."
+          yc iam service-account list --format json >/dev/null 2>&1 && echo "✓ yc authentication successful" || echo "✗ yc authentication failed"
           
           # Получаем project_name из terraform.tfvars или используем дефолт
           PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
@@ -152,20 +156,40 @@ jobs:
             fi
           done
           
-          echo "Cleanup completed. Attempting to import remaining service accounts if deletion failed..."
+          echo "Cleanup completed. Checking if any service accounts still exist and need to be imported..."
           
           # Если удаление не удалось, пробуем импортировать в state
-          for known_id in "ajebh4qukejfcj3vurm1" "aje6eo39svoevpsmv61o"; do
-            if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
-              echo "Service account $known_id still exists, attempting to import into Terraform state..."
-              # Определяем, какой это аккаунт по ID
-              if [ "$known_id" = "ajebh4qukejfcj3vurm1" ]; then
-                terraform import yandex_iam_service_account.serverless "$known_id" 2>&1 || echo "Import failed or already in state"
-              elif [ "$known_id" = "aje6eo39svoevpsmv61o" ]; then
-                terraform import yandex_iam_service_account.static_site "$known_id" 2>&1 || echo "Import failed or already in state"
-              fi
+          # Это нужно, чтобы Terraform не пытался создать уже существующие ресурсы
+          SERVERLESS_SA_ID="ajebh4qukejfcj3vurm1"
+          STATIC_SITE_SA_ID="aje6eo39svoevpsmv61o"
+          
+          # Проверяем и импортируем serverless SA
+          if yc iam service-account get --id "$SERVERLESS_SA_ID" --format json >/dev/null 2>&1; then
+            echo "⚠️  Service account $SERVERLESS_SA_ID still exists (could not be deleted, likely has dependencies)"
+            echo "📥 Importing into Terraform state to avoid 'AlreadyExists' error..."
+            if terraform import yandex_iam_service_account.serverless "$SERVERLESS_SA_ID" 2>&1; then
+              echo "✓ Successfully imported serverless service account"
+            else
+              echo "✗ Import failed (may already be in state or resource name mismatch)"
             fi
-          done
+          else
+            echo "✓ Service account $SERVERLESS_SA_ID does not exist (successfully deleted or never existed)"
+          fi
+          
+          # Проверяем и импортируем static_site SA
+          if yc iam service-account get --id "$STATIC_SITE_SA_ID" --format json >/dev/null 2>&1; then
+            echo "⚠️  Service account $STATIC_SITE_SA_ID still exists (could not be deleted, likely has dependencies)"
+            echo "📥 Importing into Terraform state to avoid 'AlreadyExists' error..."
+            if terraform import yandex_iam_service_account.static_site "$STATIC_SITE_SA_ID" 2>&1; then
+              echo "✓ Successfully imported static_site service account"
+            else
+              echo "✗ Import failed (may already be in state or resource name mismatch)"
+            fi
+          else
+            echo "✓ Service account $STATIC_SITE_SA_ID does not exist (successfully deleted or never existed)"
+          fi
+          
+          echo "✅ Service account cleanup/import completed"
 
       - name: Terraform Apply
         working-directory: infrastructure/serverless
