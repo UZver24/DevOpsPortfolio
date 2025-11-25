@@ -33,16 +33,12 @@
     - [x] Тестирование развернутых сервисов через endpoints (по отдельности)
     - [ ] Настройки сети внутри облака
         - [x] Настроить статический хостинг фронтенда в Object Storage (`kulibin-devops-portfolio.website.yandexcloud.net`)
-        - [ ] Выпустить TLS-сертификаты через Yandex Certificate Manager (для `app` и `api`)
-        - [x] Перенести frontend в Object Storage (Terraform, отключить serverless frontend container)
-        - [ ] Подключить Cloud CDN / кастомный домен
-        - [x] Настроить API Gateway как прокси к backend serverless container (публичный URL `api`)
+        - [x] Перевести frontend в Object Storage (Terraform, отключить serverless frontend container)
+        - [x] Настроить API Gateway как прокси к backend serverless container (публичный URL)
         - [x] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
-        - [ ] Прописать DNS записи (`A/CNAME`) на CDN и API Gateway, проверить доступность
-        - [ ] Задокументировать процесс и подготовить Terraform к возможному переходу на ALB
+        - [x] Проверка, что приложение доступно из Интернета
   - [ ] Публикация Docker образов в Container Registry (автоматизировать push)
   - [ ] Автоматический триггер деплоя из registry (Helm/kubectl не используется для serverless)
-  - [ ] Проверка, что приложение доступно из Интернета
   - [ ] Настраиваем CI/CD пайплайн
     - [ ] Автоматическая сборка Docker образов
     - [ ] Публикация образов в registry
