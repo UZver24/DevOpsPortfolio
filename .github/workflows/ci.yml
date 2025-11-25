@@ -95,22 +95,14 @@ jobs:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
         run: terraform init
 
-      - name: Import existing service accounts (if needed)
+      - name: Delete existing service accounts (if any)
         working-directory: infrastructure/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
         run: |
-          # Устанавливаем yc CLI и jq для импорта
+          # Устанавливаем yc CLI
           curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
           export PATH="$PATH:$HOME/yandex-cloud/bin"
-          # jq обычно уже установлен в GitHub Actions runner, но на всякий случай
-          which jq || (sudo apt-get update && sudo apt-get install -y jq)
-          
-          # Получаем project_name из terraform.tfvars или используем дефолт
-          PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
-          if [ -z "$PROJECT_NAME" ]; then
-            PROJECT_NAME="devops-portfolio-serverless"
-          fi
           
           # Получаем project_name из terraform.tfvars или используем дефолт
           PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
@@ -120,64 +112,38 @@ jobs:
           
           echo "Using project_name: '$PROJECT_NAME'"
           
-          # Получаем ID сервисных аккаунтов по имени
+          # Имена сервисных аккаунтов
           SERVERLESS_SA_NAME="${PROJECT_NAME}-serverless-sa"
           STATIC_SITE_SA_NAME="${PROJECT_NAME}-static-site"
           
-          echo "Looking for service accounts: '$SERVERLESS_SA_NAME' and '$STATIC_SITE_SA_NAME'"
+          echo "Checking for existing service accounts: '$SERVERLESS_SA_NAME' and '$STATIC_SITE_SA_NAME'"
           
-          # Пробуем найти по имени
+          # Пробуем найти и удалить по имени
           SERVERLESS_SA_ID=$(yc iam service-account get --name "$SERVERLESS_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-          STATIC_SITE_SA_ID=$(yc iam service-account get --name "$STATIC_SITE_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-          
-          # Если не нашли по имени, пробуем найти по паттерну в списке всех аккаунтов
-          if [ -z "$SERVERLESS_SA_ID" ]; then
-            echo "Not found by name, searching in all service accounts..."
-            SERVERLESS_SA_ID=$(yc iam service-account list --format json 2>/dev/null | jq -r ".[] | select(.name | endswith(\"-serverless-sa\")) | .id" | head -1 || echo "")
-          fi
-          if [ -z "$STATIC_SITE_SA_ID" ]; then
-            STATIC_SITE_SA_ID=$(yc iam service-account list --format json 2>/dev/null | jq -r ".[] | select(.name | endswith(\"-static-site\")) | .id" | head -1 || echo "")
-          fi
-          
-          # Если всё ещё не нашли, используем известные ID из предыдущих ошибок (fallback)
-          if [ -z "$SERVERLESS_SA_ID" ]; then
-            echo "Trying known service account IDs from previous errors..."
-            # Пробуем известные ID (из ошибок terraform)
-            for known_id in "ajebh4qukejfcj3vurm1"; do
-              if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
-                SERVERLESS_SA_ID="$known_id"
-                echo "Found serverless SA by known ID: $known_id"
-                break
-              fi
-            done
-          fi
-          
-          if [ -z "$STATIC_SITE_SA_ID" ]; then
-            for known_id in "aje6eo39svoevpsmv61o"; do
-              if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
-                STATIC_SITE_SA_ID="$known_id"
-                echo "Found static_site SA by known ID: $known_id"
-                break
-              fi
-            done
-          fi
-          
-          echo "Final IDs: serverless=$SERVERLESS_SA_ID, static_site=$STATIC_SITE_SA_ID"
-          
-          # Импортируем, если они существуют и не в state
           if [ -n "$SERVERLESS_SA_ID" ]; then
-            echo "Importing existing service account: $SERVERLESS_SA_NAME ($SERVERLESS_SA_ID)"
-            terraform import yandex_iam_service_account.serverless "$SERVERLESS_SA_ID" 2>/dev/null || echo "Service account serverless already in state or import failed"
+            echo "Deleting existing service account: $SERVERLESS_SA_NAME ($SERVERLESS_SA_ID)"
+            yc iam service-account delete --id "$SERVERLESS_SA_ID" 2>/dev/null || echo "Failed to delete or already deleted"
           else
-            echo "Service account $SERVERLESS_SA_NAME not found, will be created"
+            echo "Service account $SERVERLESS_SA_NAME not found"
           fi
           
+          STATIC_SITE_SA_ID=$(yc iam service-account get --name "$STATIC_SITE_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
           if [ -n "$STATIC_SITE_SA_ID" ]; then
-            echo "Importing existing service account: $STATIC_SITE_SA_NAME ($STATIC_SITE_SA_ID)"
-            terraform import yandex_iam_service_account.static_site "$STATIC_SITE_SA_ID" 2>/dev/null || echo "Service account static_site already in state or import failed"
+            echo "Deleting existing service account: $STATIC_SITE_SA_NAME ($STATIC_SITE_SA_ID)"
+            yc iam service-account delete --id "$STATIC_SITE_SA_ID" 2>/dev/null || echo "Failed to delete or already deleted"
           else
-            echo "Service account $STATIC_SITE_SA_NAME not found, will be created"
+            echo "Service account $STATIC_SITE_SA_NAME not found"
           fi
+          
+          # Также пробуем удалить по известным ID (на случай если имена не совпадают)
+          for known_id in "ajebh4qukejfcj3vurm1" "aje6eo39svoevpsmv61o"; do
+            if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
+              echo "Deleting service account by known ID: $known_id"
+              yc iam service-account delete --id "$known_id" 2>/dev/null || echo "Failed to delete or already deleted"
+            fi
+          done
+          
+          echo "Cleanup completed. Terraform will create new service accounts."
 
       - name: Terraform Apply
         working-directory: infrastructure/serverless
