@@ -31,7 +31,43 @@ main() {
   fi
 
   echo "==> Загружаем dist/ в Object Storage (s3://${STATIC_BUCKET_NAME})"
-  yc storage s3 cp --recursive dist/ "s3://${STATIC_BUCKET_NAME}"
+  
+  # Функция для определения Content-Type по расширению
+  get_content_type() {
+    local file="$1"
+    case "${file##*.}" in
+      html) echo "text/html; charset=utf-8" ;;
+      css)  echo "text/css; charset=utf-8" ;;
+      js)   echo "application/javascript; charset=utf-8" ;;
+      json) echo "application/json; charset=utf-8" ;;
+      png)  echo "image/png" ;;
+      jpg|jpeg) echo "image/jpeg" ;;
+      svg)  echo "image/svg+xml" ;;
+      ico)  echo "image/x-icon" ;;
+      woff) echo "font/woff" ;;
+      woff2) echo "font/woff2" ;;
+      ttf)  echo "font/ttf" ;;
+      eot)  echo "application/vnd.ms-fontobject" ;;
+      map)  echo "application/json" ;;
+      *)    echo "text/plain" ;;
+    esac
+  }
+
+  # Загружаем все файлы из dist/ с правильными Content-Type
+  cd dist
+  find . -type f | while read -r file; do
+    # Убираем ведущую точку и слэш
+    key="${file#./}"
+    content_type=$(get_content_type "$file")
+    
+    echo "Загружаем: $key (Content-Type: $content_type)"
+    yc storage s3api put-object \
+      --bucket "${STATIC_BUCKET_NAME}" \
+      --key "$key" \
+      --body "$file" \
+      --content-type "$content_type" \
+      --acl public-read
+  done
 
   echo "Готово: фронтенд обновлён"
 }
