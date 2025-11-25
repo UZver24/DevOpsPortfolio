@@ -193,6 +193,46 @@ jobs:
           fi
           
           echo "✅ Service account import attempt completed"
+          
+          # Импортируем другие существующие ресурсы
+          echo ""
+          echo "Attempting to import other existing resources..."
+          
+          # Получаем имя бакета из terraform.tfvars
+          BUCKET_NAME=$(grep -E '^static_bucket_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
+          if [ -n "$BUCKET_NAME" ]; then
+            echo "📥 Attempting to import storage bucket ($BUCKET_NAME)..."
+            if terraform import yandex_storage_bucket.static_site "$BUCKET_NAME" 2>&1; then
+              echo "  ✓ Successfully imported storage bucket"
+            else
+              echo "  ℹ️  Import skipped (bucket may not exist, already in state, or name mismatch - this is OK)"
+            fi
+          fi
+          
+          # Проверяем, что уже в state
+          echo "Checking current Terraform state..."
+          terraform state list 2>/dev/null || echo "  (No state file yet)"
+          
+          # Импортируем serverless container (нужен ID, но попробуем по имени)
+          CONTAINER_NAME="devops-portfolio-serverless-backend"
+          echo "📥 Attempting to import serverless container ($CONTAINER_NAME)..."
+          # Для контейнера нужен ID, но можно попробовать импортировать по имени
+          # Если не сработает, Terraform покажет ошибку, и мы сможем улучшить логику
+          if terraform import yandex_serverless_container.backend "$CONTAINER_NAME" 2>&1; then
+            echo "  ✓ Successfully imported serverless container"
+          else
+            echo "  ℹ️  Import skipped (container may not exist, already in state, or need ID instead of name)"
+            echo "  Note: If you see 'Container already exists' error later, you'll need to import it with its ID"
+          fi
+          
+          # Импортируем API Gateway если существует (нужен ID, но попробуем по имени)
+          API_GATEWAY_NAME="devops-portfolio-serverless-api"
+          echo "📥 Attempting to import API Gateway ($API_GATEWAY_NAME)..."
+          if terraform import yandex_api_gateway.backend "$API_GATEWAY_NAME" 2>&1; then
+            echo "  ✓ Successfully imported API Gateway"
+          else
+            echo "  ℹ️  Import skipped (API Gateway may not exist, already in state, or need ID instead of name)"
+          fi
 
       - name: Terraform Apply
         working-directory: infrastructure/serverless
