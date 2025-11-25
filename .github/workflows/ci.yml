@@ -63,12 +63,6 @@ jobs:
         with:
           terraform_version: 1.6.6
 
-      - name: Install Yandex Cloud CLI
-        run: |
-          curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-          yc --version
-
       - name: Terraform Init
         working-directory: infrastructure/serverless
         env:
