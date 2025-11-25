@@ -39,7 +39,7 @@
    docker tag backend:latest  cr.yandex/<registry_id>/backend:latest
    docker push cr.yandex/<registry_id>/backend:latest
    ```
-3. **Заполните `infrastructure/serverless/terraform.tfvars`**
+3. **Заполните `terraform/serverless/terraform.tfvars`**
    ```hcl
    yc_token      = "..."         # yc iam create-token
    yc_cloud_id   = "..."         # yc config list
@@ -57,7 +57,7 @@
    `enable_frontend_container = false` — фронтенд отдаём из Object Storage. В дальнейшем можно включить контейнер, если потребуется.
 4. **Примените Terraform**
    ```bash
-   cd infrastructure/serverless
+   cd terraform/serverless
    terraform init
    terraform apply
    ```
@@ -68,13 +68,13 @@
 5. **Соберите и загрузите фронтенд**
    ```bash
    export API_URL=$(terraform output -raw api_gateway_endpoint)
-   cd ../../frontend
+   cd ../../src/frontend
    VITE_API_BASE_URL=$API_URL npm run build
 
-   cd ..
-   export AWS_ACCESS_KEY_ID=$(terraform -chdir=infrastructure/serverless output -raw static_site_access_key)
-   export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=infrastructure/serverless output -raw static_site_secret_key)
-   yc storage s3 cp --recursive frontend/dist/ s3://$(terraform -chdir=infrastructure/serverless output -raw static_bucket_name)
+   cd ../..
+   export AWS_ACCESS_KEY_ID=$(terraform -chdir=terraform/serverless output -raw static_site_access_key)
+   export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=terraform/serverless output -raw static_site_secret_key)
+   yc storage s3 cp --recursive src/frontend/dist/ s3://$(terraform -chdir=terraform/serverless output -raw static_bucket_name)
    ```
 6. **Проверьте URLs**
    - `terraform output backend_url` — прямой доступ к контейнеру (для отладки).

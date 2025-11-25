@@ -49,8 +49,8 @@ export YC_OAUTH_TOKEN=$(yc iam create-token)
 ```bash
 export STATIC_BUCKET_NAME=kulibin-devops-portfolio
 export API_GATEWAY_ENDPOINT=https://d5dm4d9170q82do7f5m8.lievo6ut.apigw.yandexcloud.net
-export AWS_ACCESS_KEY_ID=$(terraform -chdir=infrastructure/serverless output -raw static_site_access_key)
-export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=infrastructure/serverless output -raw static_site_secret_key)
+export AWS_ACCESS_KEY_ID=$(terraform -chdir=terraform/serverless output -raw static_site_access_key)
+export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=terraform/serverless output -raw static_site_secret_key)
 ./CI/build_frontend.sh
 ```
 

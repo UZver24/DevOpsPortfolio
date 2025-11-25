@@ -55,7 +55,7 @@
 
 ## 5. Практические рекомендации
 
-- Вся IaC собрана в `infrastructure/serverless`: backend контейнер, статический бакет и API Gateway управляются из одного Terraform state.  
+- Вся IaC собрана в `terraform/serverless`: backend контейнер, статический бакет и API Gateway управляются из одного Terraform state.  
 - Frontend container оставлен опциональным (флаг `enable_frontend_container`), но по умолчанию используем Object Storage + API Gateway.  
 - Секреты/URL backend — через Terraform outputs → Terraform Cloud/Secret Manager → API Gateway.  
 - Мониторим реальные затраты через Yandex Cost Management и фиксируем значения в FinOps.md после каждого релиза.

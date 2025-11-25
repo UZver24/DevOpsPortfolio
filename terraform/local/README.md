@@ -38,7 +38,7 @@ provider_installation {
 ## Как использовать
 1. Установить Terraform ([официальная инструкция](https://learn.hashicorp.com/tutorials/terraform/install-cli)).
 2. Настроить файл `~/.terraformrc` (см. выше), если вы видите ошибку про registry.terraform.io!
-3. Зайти в каталог `infrastructure/local`
+3. Зайти в каталог `terraform/local`
 4. Инициализировать проект:
    ```bash
    terraform init

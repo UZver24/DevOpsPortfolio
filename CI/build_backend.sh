@@ -17,7 +17,7 @@ main() {
   echo "${YC_IAM_TOKEN}" | docker login --username iam --password-stdin cr.yandex
 
   echo "==> Сборка backend-образа: ${image}"
-  docker build -t "${image}" "${REPO_ROOT}/backend"
+  docker build -t "${image}" "${REPO_ROOT}/src/backend"
 
   echo "==> Публикация образа"
   docker push "${image}"

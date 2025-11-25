@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: ./src/backend
       dockerfile: Dockerfile
     container_name: devops-portfolio-backend
     ports:
@@ -24,7 +24,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./src/frontend
       dockerfile: Dockerfile
     container_name: devops-portfolio-frontend
     ports:
