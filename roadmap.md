@@ -32,12 +32,13 @@
     - [x] Развёртывание через terraform и получение публичных endpoint-адресов
     - [x] Тестирование развернутых сервисов через endpoints (по отдельности)
     - [ ] Настройки сети внутри облака
-        - [ ] Заказать доменное имя (или подключить существующий DNS-зоной)
-        - [ ] Выпустить TLS-сертификат в Yandex Certificate Manager
-        - [ ] Создать Application Load Balancer средствами Terraform
-        - [ ] Настроить маршруты: `/` → frontend контейнер, `/api/*` → backend (приватный)
-        - [ ] Выдать ALB права `serverless.containers.invoker`, убрать публичный доступ у backend
-        - [ ] Прописать DNS (A/CNAME) на ALB и подтвердить доступность
+        - [ ] Заказать «красивое» доменное имя и подключить DNS-зону
+        - [ ] Выпустить TLS-сертификаты через Yandex Certificate Manager (для `app` и `api`)
+        - [ ] Перенести frontend в Object Storage + Cloud CDN (Terraform, отключить serverless frontend container)
+        - [ ] Настроить API Gateway как прокси к backend serverless container (публичный URL `api.domain`)
+        - [ ] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
+        - [ ] Прописать DNS записи (`A/CNAME`) на CDN и API Gateway, проверить доступность
+        - [ ] Задокументировать процесс и подготовить Terraform к возможному переходу на ALB
   - [ ] Публикация Docker образов в Container Registry (автоматизировать push)
   - [ ] Автоматический триггер деплоя из registry (Helm/kubectl не используется для serverless)
   - [ ] Проверка, что приложение доступно из Интернета

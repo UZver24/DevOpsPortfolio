@@ -10,3 +10,4 @@ envsubst '${PORT} ${API_BASE_URL}' < /etc/nginx/conf.d/default.conf.template > /
 
 exec nginx -g 'daemon off;'
 
+
