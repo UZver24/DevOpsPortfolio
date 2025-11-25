@@ -22,18 +22,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Verify secrets are set
+        run: |
+          if [ -z "${{ secrets.YC_ACCESS_KEY_ID }}" ]; then
+            echo "❌ ERROR: YC_ACCESS_KEY_ID secret is not set or empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.YC_SECRET_ACCESS_KEY }}" ]; then
+            echo "❌ ERROR: YC_SECRET_ACCESS_KEY secret is not set or empty"
+            exit 1
+          fi
+          if [ -z "${{ secrets.REGISTRY_ID }}" ]; then
+            echo "❌ ERROR: REGISTRY_ID secret is not set or empty"
+            exit 1
+          fi
+          echo "✅ Secrets are set"
+          echo "Registry: cr.yandex"
+          echo "Registry ID: ${{ secrets.REGISTRY_ID }}"
+
       - name: Login to Yandex Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: cr.yandex
-          username: oauth
-          password: ${{ secrets.YC_OAUTH_TOKEN }}
+        run: |
+          echo "${{ secrets.YC_ACCESS_KEY_ID }}:${{ secrets.YC_SECRET_ACCESS_KEY }}" | \
+            docker login --username iam --password-stdin cr.yandex
 
       - name: Build and push backend image
         env:
           REGISTRY_ID: ${{ secrets.REGISTRY_ID }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
-          YC_OAUTH_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
+          YC_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          YC_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
         run: |
           cd CI
           chmod +x build_backend.sh
@@ -60,13 +77,16 @@ jobs:
       - name: Terraform Init
         working-directory: infrastructure/serverless
         env:
-          YC_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
+          # Используем access key для terraform (можно также использовать YC_TOKEN с IAM токеном)
+          YC_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          YC_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
         run: terraform init
 
       - name: Terraform Apply
         working-directory: infrastructure/serverless
         env:
-          YC_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
+          YC_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
+          YC_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
           TF_INPUT: "false"
         run: terraform apply -auto-approve
 

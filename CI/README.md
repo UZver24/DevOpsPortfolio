@@ -6,6 +6,8 @@
 
 > **📝 GitHub Actions workflow**: Файл `.github/workflows/ci.yml` содержит конфигурацию автоматического CI/CD пайплайна.
 
+> **🔧 Проблемы?**: См. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) для решения частых проблем.
+
 ## `build_backend.sh`
 
 Собирает backend-образ и публикует его в Yandex Container Registry.
