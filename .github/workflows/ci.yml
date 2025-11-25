@@ -51,51 +51,48 @@ jobs:
           chmod +x build_backend.sh
           ./build_backend.sh
 
-  # Временно отключено - сначала убедимся, что сборка бэкенда работает
-  # deploy-infra:
-  #   name: Deploy Infrastructure
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Terraform
-  #       uses: hashicorp/setup-terraform@v3
-  #       with:
-  #         terraform_version: 1.6.6
-  #
-  #     - name: Install Yandex Cloud CLI
-  #       run: |
-  #         curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-  #         echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-  #         yc --version
-  #
-  #     - name: Terraform Init
-  #       working-directory: infrastructure/serverless
-  #       env:
-  #         # Используем access key для terraform (можно также использовать YC_TOKEN с IAM токеном)
-  #         YC_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
-  #         YC_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
-  #       run: terraform init
-  #
-  #     - name: Terraform Apply
-  #       working-directory: infrastructure/serverless
-  #       env:
-  #         YC_ACCESS_KEY_ID: ${{ secrets.YC_ACCESS_KEY_ID }}
-  #         YC_SECRET_ACCESS_KEY: ${{ secrets.YC_SECRET_ACCESS_KEY }}
-  #         TF_INPUT: "false"
-  #       run: terraform apply -auto-approve
-  #
-  #     - name: Save Terraform Outputs
-  #       working-directory: infrastructure/serverless
-  #       run: terraform output -json > terraform-outputs.json
-  #
-  #     - name: Upload Terraform artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: terraform-state
-  #         path: infrastructure/serverless/
-  #         retention-days: 1
+  deploy-infra:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Install Yandex Cloud CLI
+        run: |
+          curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
+          yc --version
+
+      - name: Terraform Init
+        working-directory: infrastructure/serverless
+        env:
+          # Используем IAM токен для terraform
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/serverless
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          TF_INPUT: "false"
+        run: terraform apply -auto-approve
+
+      - name: Save Terraform Outputs
+        working-directory: infrastructure/serverless
+        run: terraform output -json > terraform-outputs.json
+
+      - name: Upload Terraform artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state
+          path: infrastructure/serverless/
+          retention-days: 1
   #
   # build-frontend:
   #   name: Build and Deploy Frontend
