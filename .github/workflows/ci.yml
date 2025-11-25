@@ -495,6 +495,9 @@ jobs:
           STATIC_BUCKET_NAME: ${{ env.STATIC_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          YC_IAM_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
         run: |
           chmod +x build_frontend.sh
           ./build_frontend.sh

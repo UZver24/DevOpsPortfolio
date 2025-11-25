@@ -20,6 +20,16 @@ main() {
   echo "==> Собираем фронтенд (VITE_API_BASE_URL=${API_GATEWAY_ENDPOINT})"
   VITE_API_BASE_URL="${API_GATEWAY_ENDPOINT}" npm run build
 
+  echo "==> Настраиваем авторизацию yc для Object Storage"
+  if [ -n "${YC_IAM_TOKEN:-}" ]; then
+    export YC_TOKEN="${YC_IAM_TOKEN}"
+    yc config set token "${YC_IAM_TOKEN}" || true
+    yc config set folder-id "${YC_FOLDER_ID:-}" || true
+    yc config set cloud-id "${YC_CLOUD_ID:-}" || true
+  else
+    echo "⚠️  YC_IAM_TOKEN не установлен, пробуем использовать существующую конфигурацию yc"
+  fi
+
   echo "==> Загружаем dist/ в Object Storage (s3://${STATIC_BUCKET_NAME})"
   yc storage s3 cp --recursive dist/ "s3://${STATIC_BUCKET_NAME}"
 
