@@ -8,57 +8,35 @@
 
 | Переменная | Описание | Тип | Где получить |
 |------------|----------|-----|-------------|
-| `YC_ACCESS_KEY_ID` | Access key ID сервисного аккаунта | **Secret** | См. инструкцию ниже |
-| `YC_SECRET_ACCESS_KEY` | Secret access key сервисного аккаунта | **Secret** | См. инструкцию ниже |
+| `YC_IAM_TOKEN` | IAM-токен для Docker login в Container Registry | **Secret** | `yc iam create-token` (действителен 12 часов) |
 | `REGISTRY_ID` | ID Container Registry в Yandex Cloud | **Variable** или **Secret** | Из `terraform.tfvars` или `yc container registry list` |
 
-> **⚠️ Важно**: Для Docker login в Yandex Container Registry **необходим** сервисный аккаунт со статическим ключом доступа. OAuth-токен или IAM-токен не работают для Docker login!
+> **⚠️ Важно**: Для Docker login в Yandex Container Registry **необходим IAM-токен** (получается через `yc iam create-token`). IAM-токен действителен только 12 часов, поэтому его нужно периодически обновлять в секретах GitHub.
 
 ## Пошаговая инструкция
 
-### 1. Создание сервисного аккаунта и ключа доступа
+### 1. Получение IAM-токена для Docker login
 
-#### Шаг 1: Создайте сервисный аккаунт
-
-```bash
-yc iam service-account create --name github-actions
-```
-
-Сохраните **ID сервисного аккаунта** из вывода (например, `aje...`).
-
-#### Шаг 2: Назначьте необходимые роли
+Для Docker login в Yandex Container Registry нужен IAM-токен:
 
 ```bash
-# Получите folder ID
-FOLDER_ID=$(yc config get folder-id)
-
-# Назначьте роли для работы с Container Registry
-yc resource-manager folder add-access-binding $FOLDER_ID \
-  --role container-registry.images.pusher \
-  --service-account-name github-actions
-
-# Назначьте роль для работы с Serverless Containers (если нужно)
-yc resource-manager folder add-access-binding $FOLDER_ID \
-  --role serverless.containers.admin \
-  --service-account-name github-actions
-
-# Назначьте роль для работы с Terraform
-yc resource-manager folder add-access-binding $FOLDER_ID \
-  --role editor \
-  --service-account-name github-actions
+# Создайте IAM-токен
+yc iam create-token
 ```
 
-#### Шаг 3: Создайте статический ключ доступа
+**Скопируйте весь токен** (он начинается с `t1.` и заканчивается точкой).
+
+> **⚠️ ВАЖНО**: IAM-токен действителен только **12 часов**! После истечения нужно создать новый токен и обновить секрет в GitHub.
+
+### 2. Получение REGISTRY_ID
 
 ```bash
-yc iam access-key create --service-account-name github-actions
+# Посмотреть список реестров
+yc container registry list
+
+# Или взять из terraform.tfvars
+# container_registry_id = "crp50gpc30l3tbd4rtj0"
 ```
-
-**Сохраните оба значения:**
-- `access_key_id` — это будет `YC_ACCESS_KEY_ID`
-- `secret` — это будет `YC_SECRET_ACCESS_KEY`
-
-> **⚠️ ВАЖНО**: `secret` показывается только один раз! Сохраните его сразу.
 
 #### REGISTRY_ID
 
@@ -70,28 +48,24 @@ yc container registry list
 # container_registry_id = "crp50gpc30l3tbd4rtj0"
 ```
 
-### 2. Добавление секретов в GitHub
+### 3. Добавление секретов в GitHub
 
 1. Откройте ваш репозиторий в GitHub
 2. Перейдите в **Settings** (в верхнем меню репозитория)
 3. В левом меню выберите **Secrets and variables** → **Actions**
 4. Нажмите **New repository secret** (для секретов) или **New repository variable** (для обычных переменных)
 
-#### Для YC_ACCESS_KEY_ID (Secret):
+#### Для YC_IAM_TOKEN (Secret):
 
 1. Нажмите **New repository secret**
-2. **Name**: `YC_ACCESS_KEY_ID`
-3. **Secret**: вставьте `access_key_id` из шага 3
+2. **Name**: `YC_IAM_TOKEN`
+3. **Secret**: вставьте IAM-токен, полученный через `yc iam create-token`
 4. Нажмите **Add secret**
 
-#### Для YC_SECRET_ACCESS_KEY (Secret):
-
-1. Нажмите **New repository secret**
-2. **Name**: `YC_SECRET_ACCESS_KEY`
-3. **Secret**: вставьте `secret` из шага 3
-4. Нажмите **Add secret**
-
-> **Примечание**: В GitHub секреты автоматически скрыты в логах и не могут быть просмотрены после сохранения. `secret` показывается только один раз при создании ключа!
+> **Примечание**: 
+> - В GitHub секреты автоматически скрыты в логах и не могут быть просмотрены после сохранения
+> - IAM-токен действителен только 12 часов, после истечения нужно обновить секрет
+> - Для автоматизации можно использовать сервисный аккаунт (см. раздел "Автоматизация обновления токена" ниже)
 
 #### Для REGISTRY_ID (Variable или Secret):
 
@@ -107,13 +81,12 @@ yc container registry list
 3. **Secret**: `crp50gpc30l3tbd4rtj0`
 4. Нажмите **Add secret**
 
-### 3. Проверка настроек
+### 4. Проверка настроек
 
 После добавления секретов они будут доступны в GitHub Actions workflows. Проверьте, что секреты правильно используются:
 
-- `YC_ACCESS_KEY_ID` и `YC_SECRET_ACCESS_KEY` используются в:
+- `YC_IAM_TOKEN` используется в:
   - `build-backend` job (для `docker login` в Yandex Container Registry)
-  - `deploy-infra` job (для terraform provider)
 - `REGISTRY_ID` используется в:
   - `build-backend` job (для формирования пути к образу)
 
@@ -169,21 +142,23 @@ yc iam create-token
 
 ## Устранение проблем
 
-### Ошибка: "YC_ACCESS_KEY_ID is not set" или "YC_SECRET_ACCESS_KEY is not set"
+### Ошибка: "YC_IAM_TOKEN is not set"
 
 Проверьте:
-1. Оба секрета добавлены в Settings → Secrets and variables → Actions → Secrets
-2. Правильные имена секретов (чувствительно к регистру)
-3. В workflow файле секреты правильно используются: `${{ secrets.YC_ACCESS_KEY_ID }}` и `${{ secrets.YC_SECRET_ACCESS_KEY }}`
+1. Секрет добавлен в Settings → Secrets and variables → Actions → Secrets
+2. Правильное имя секрета (чувствительно к регистру): `YC_IAM_TOKEN`
+3. В workflow файле секрет правильно используется: `${{ secrets.YC_IAM_TOKEN }}`
 
-### Ошибка: "unauthorized: Password is invalid - must be OAuth token" при docker push
+### Ошибка: "unauthorized: Password is invalid - must be IAM token" при docker push
 
-Эта ошибка означает, что вы пытаетесь использовать IAM-токен или OAuth-токен для Docker login. **Для Docker login нужен access key!**
+Эта ошибка означает, что:
+1. Токен истёк (IAM-токен действителен только 12 часов)
+2. Токен вставлен неправильно (возможно, есть лишние пробелы)
 
 Решение:
-1. Создайте сервисный аккаунт и access key (см. инструкцию выше)
-2. Добавьте `YC_ACCESS_KEY_ID` и `YC_SECRET_ACCESS_KEY` в секреты GitHub
-3. Убедитесь, что workflow использует access key для docker login
+1. Создайте новый IAM-токен: `yc iam create-token`
+2. Обновите секрет `YC_IAM_TOKEN` в GitHub
+3. Перезапустите workflow
 
 ### Ошибка: "REGISTRY_ID is not set"
 
