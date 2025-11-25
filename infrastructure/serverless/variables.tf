@@ -147,4 +147,10 @@ variable "api_allowed_origins" {
   default     = ["https://example.website.yandexcloud.net", "http://localhost:3000", "http://localhost:5173"]
 }
 
+variable "create_api_gateway" {
+  description = "Создавать ли API Gateway (false если уже существует и не поддерживает импорт). TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение существующего API Gateway."
+  type        = bool
+  default     = true
+}
+
 

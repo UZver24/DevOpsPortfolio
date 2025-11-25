@@ -63,9 +63,47 @@ jobs:
         with:
           terraform_version: 1.6.6
 
+      - name: Check for existing API Gateway
+        working-directory: infrastructure/serverless
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: |
+          # Устанавливаем yc CLI для проверки
+          curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash >/dev/null 2>&1 || true
+          export PATH="$PATH:$HOME/yandex-cloud/bin"
+          
+          # Настраиваем авторизацию
+          export YC_TOKEN="$YC_TOKEN"
+          export YC_FOLDER_ID="${{ secrets.YC_FOLDER_ID }}"
+          export YC_CLOUD_ID="${{ secrets.YC_CLOUD_ID }}"
+          yc config set token "$YC_TOKEN" >/dev/null 2>&1 || true
+          yc config set folder-id "${{ secrets.YC_FOLDER_ID }}" >/dev/null 2>&1 || true
+          yc config set cloud-id "${{ secrets.YC_CLOUD_ID }}" >/dev/null 2>&1 || true
+          
+          # Проверяем существование API Gateway
+          API_GATEWAY_NAME="devops-portfolio-serverless-api"
+          if yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json >/dev/null 2>&1; then
+            echo "API_GATEWAY_EXISTS=true" >> $GITHUB_ENV
+            echo "ℹ️  API Gateway '$API_GATEWAY_NAME' already exists - will not create (Terraform import not supported)"
+            echo "TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение и управление существующим API Gateway"
+          else
+            # Если не найден или yc auth failed - по умолчанию создаем (если уже существует, Terraform выдаст ошибку)
+            echo "API_GATEWAY_EXISTS=false" >> $GITHUB_ENV
+            echo "✓ API Gateway '$API_GATEWAY_NAME' not found (or yc auth failed) - will attempt to create"
+          fi
+
       - name: Create terraform.tfvars
         working-directory: infrastructure/serverless
+        env:
+          API_GATEWAY_EXISTS: ${{ env.API_GATEWAY_EXISTS }}
         run: |
+          # Определяем значение create_api_gateway на основе проверки
+          if [ "$API_GATEWAY_EXISTS" = "true" ]; then
+            CREATE_API_GATEWAY="false"
+          else
+            CREATE_API_GATEWAY="true"
+          fi
+          
           cat > terraform.tfvars <<EOF
           yc_token = "${{ secrets.YC_IAM_TOKEN }}"
           yc_cloud_id = "${{ secrets.YC_CLOUD_ID }}"
@@ -86,6 +124,9 @@ jobs:
             "http://localhost:3000",
             "http://localhost:5173",
           ]
+          
+          # TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение существующего API Gateway
+          create_api_gateway = $CREATE_API_GATEWAY
           EOF
 
       - name: Terraform Init
@@ -212,21 +253,6 @@ jobs:
           # Проверяем, что уже в state
           echo "Checking current Terraform state..."
           terraform state list 2>/dev/null || echo "  (No state file yet)"
-          
-          # API Gateway не поддерживает импорт, поэтому удаляем существующий если есть
-          API_GATEWAY_NAME="devops-portfolio-serverless-api"
-          echo "🗑️  Attempting to delete existing API Gateway ($API_GATEWAY_NAME) if it exists..."
-          
-          # Пробуем найти и удалить API Gateway по имени
-          if yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json >/dev/null 2>&1; then
-            API_GATEWAY_ID=$(yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-            if [ -n "$API_GATEWAY_ID" ]; then
-              echo "  Found API Gateway ID: $API_GATEWAY_ID, deleting..."
-              yc serverless api-gateway delete --id "$API_GATEWAY_ID" 2>&1 && echo "  ✓ Successfully deleted API Gateway" || echo "  ✗ Failed to delete API Gateway (may have dependencies)"
-            fi
-          else
-            echo "  ℹ️  API Gateway not found (may not exist or yc auth failed)"
-          fi
           
           # Импортируем serverless container (нужен ID, получаем через data source)
           CONTAINER_NAME="devops-portfolio-serverless-backend"

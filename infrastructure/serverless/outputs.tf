@@ -30,8 +30,8 @@ output "static_site_secret_key" {
 }
 
 output "api_gateway_endpoint" {
-  value       = "https://${yandex_api_gateway.backend.domain}"
-  description = "Публичный endpoint API Gateway"
+  value       = var.create_api_gateway ? "https://${yandex_api_gateway.backend[0].domain}" : null
+  description = "Публичный endpoint API Gateway (null если не создан, так как уже существует)"
 }
 
 

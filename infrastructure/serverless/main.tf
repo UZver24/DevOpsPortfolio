@@ -170,8 +170,13 @@ resource "yandex_serverless_container_iam_binding" "frontend_public" {
   members      = ["system:allUsers"]
 }
 
+# TODO: API Gateway не поддерживает импорт в Terraform, поэтому используем временное решение:
+# проверяем существование через yc CLI в workflow и устанавливаем create_api_gateway = false если уже существует.
+# ТРЕБУЕТСЯ ПРАВКА: нужно реализовать автоматическое обнаружение и управление существующим API Gateway.
 # API Gateway для backend (используется фронтендом из Object Storage)
 resource "yandex_api_gateway" "backend" {
+  count = var.create_api_gateway ? 1 : 0
+
   name        = "${var.project_name}-api"
   description = "HTTP вызовы к backend serverless контейнеру"
   folder_id   = var.yc_folder_id
