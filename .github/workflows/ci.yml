@@ -107,14 +107,62 @@ jobs:
           which jq || (sudo apt-get update && sudo apt-get install -y jq)
           
           # Получаем project_name из terraform.tfvars или используем дефолт
-          PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "devops-portfolio-serverless")
+          PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
+          if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="devops-portfolio-serverless"
+          fi
+          
+          # Получаем project_name из terraform.tfvars или используем дефолт
+          PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
+          if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="devops-portfolio-serverless"
+          fi
+          
+          echo "Using project_name: '$PROJECT_NAME'"
           
           # Получаем ID сервисных аккаунтов по имени
           SERVERLESS_SA_NAME="${PROJECT_NAME}-serverless-sa"
           STATIC_SITE_SA_NAME="${PROJECT_NAME}-static-site"
           
+          echo "Looking for service accounts: '$SERVERLESS_SA_NAME' and '$STATIC_SITE_SA_NAME'"
+          
+          # Пробуем найти по имени
           SERVERLESS_SA_ID=$(yc iam service-account get --name "$SERVERLESS_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
           STATIC_SITE_SA_ID=$(yc iam service-account get --name "$STATIC_SITE_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
+          
+          # Если не нашли по имени, пробуем найти по паттерну в списке всех аккаунтов
+          if [ -z "$SERVERLESS_SA_ID" ]; then
+            echo "Not found by name, searching in all service accounts..."
+            SERVERLESS_SA_ID=$(yc iam service-account list --format json 2>/dev/null | jq -r ".[] | select(.name | endswith(\"-serverless-sa\")) | .id" | head -1 || echo "")
+          fi
+          if [ -z "$STATIC_SITE_SA_ID" ]; then
+            STATIC_SITE_SA_ID=$(yc iam service-account list --format json 2>/dev/null | jq -r ".[] | select(.name | endswith(\"-static-site\")) | .id" | head -1 || echo "")
+          fi
+          
+          # Если всё ещё не нашли, используем известные ID из предыдущих ошибок (fallback)
+          if [ -z "$SERVERLESS_SA_ID" ]; then
+            echo "Trying known service account IDs from previous errors..."
+            # Пробуем известные ID (из ошибок terraform)
+            for known_id in "ajebh4qukejfcj3vurm1"; do
+              if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
+                SERVERLESS_SA_ID="$known_id"
+                echo "Found serverless SA by known ID: $known_id"
+                break
+              fi
+            done
+          fi
+          
+          if [ -z "$STATIC_SITE_SA_ID" ]; then
+            for known_id in "aje6eo39svoevpsmv61o"; do
+              if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
+                STATIC_SITE_SA_ID="$known_id"
+                echo "Found static_site SA by known ID: $known_id"
+                break
+              fi
+            done
+          fi
+          
+          echo "Final IDs: serverless=$SERVERLESS_SA_ID, static_site=$STATIC_SITE_SA_ID"
           
           # Импортируем, если они существуют и не в state
           if [ -n "$SERVERLESS_SA_ID" ]; then
