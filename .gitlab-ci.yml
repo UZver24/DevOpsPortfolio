@@ -13,7 +13,18 @@ build-backend:
     - apk add --no-cache bash
   script:
     - cd CI
-    - ../CI/build_backend.sh
+    - ./build_backend.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+build-frontend:
+  stage: build
+  image: node:20-alpine
+  before_script:
+    - apk add --no-cache bash curl unzip
+  script:
+    - cd CI
+    - ./build_frontend.sh
   rules:
     - if: $CI_COMMIT_BRANCH
 
