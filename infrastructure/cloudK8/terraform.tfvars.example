@@ -1,0 +1,18 @@
+# Пример terraform.tfvars для подключения к Яндекс Облаку
+# Скопируйте этот файл как terraform.tfvars и заполните своими данными!
+
+# IAM-токен сервисного аккаунта (запросить через yc iam create-token)
+yc_token     = ""
+# Cloud ID вашего облака (yc config list)
+yc_cloud_id  = ""
+# Folder ID (каталог) вашего проекта (yc config list)
+yc_folder_id = ""
+# Зона размещения ресурсов, например ru-central1-a
+yc_zone      = "ru-central1-a"
+
+# Конфигурация воркеров для минимального MVP/разработки (можно масштабировать)
+worker_platform_id   = "standard-v2"      # тип n1-standard-v2 (или v3/v4)
+worker_memory_gb     = 2                   # минимум для тестов
+worker_cores         = 2                   # минимум для тестов
+worker_disk_gb       = 20                  # лучше не меньше!
+worker_node_count    = 1                   # одна нода для экономии

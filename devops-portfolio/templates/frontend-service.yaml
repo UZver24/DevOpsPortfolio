@@ -1,0 +1,24 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    {{- include "devops-portfolio.labels" . | nindent 4 }}
+    component: web
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+  - port: {{ .Values.frontend.service.port }}
+    targetPort: 80
+    protocol: TCP
+    name: http
+    {{- if eq .Values.frontend.service.type "NodePort" }}
+    nodePort: {{ .Values.frontend.service.nodePort }}
+    {{- end }}
+  selector:
+    app: frontend
+    {{- include "devops-portfolio.selectorLabels" . | nindent 4 }}
+    component: web
+{{- end }}
+
