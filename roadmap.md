@@ -31,18 +31,17 @@
     - [x] Настройка сервисного аккаунта и IAM (invoker, registry)
     - [x] Развёртывание через terraform и получение публичных endpoint-адресов
     - [x] Тестирование развернутых сервисов через endpoints (по отдельности)
-    - [ ] Настройки сети внутри облака
+    - [x] Настройки сети внутри облака
         - [x] Настроить статический хостинг фронтенда в Object Storage (`kulibin-devops-portfolio.website.yandexcloud.net`)
         - [x] Перевести frontend в Object Storage (Terraform, отключить serverless frontend container)
         - [x] Настроить API Gateway как прокси к backend serverless container (публичный URL)
         - [x] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
         - [x] Проверка, что приложение доступно из Интернета
-  - [ ] Публикация Docker образов в Container Registry (автоматизировать push)
-  - [ ] Автоматический триггер деплоя из registry (Helm/kubectl не используется для serverless)
   - [ ] Настраиваем CI/CD пайплайн
-    - [ ] Автоматическая сборка Docker образов
-    - [ ] Публикация образов в registry
-    - [ ] Автоматический деплой в Kubernetes
+    - [ ] Настроить GitHub Actions/GitLab CI для сборки backend-образа и публикации в YCR
+    - [ ] Добавить шаг сборки фронтенда и выгрузки `dist` в Object Storage через CLI
+    - [ ] Подготовить отдельный job для `terraform apply`/`yc serverless` после публикации артефактов
+    - [ ] Подключить секреты (tokens/keys) и уведомления о статусе пайплайна
   - [ ] Настраиваем мониторинг (Prometheus, Grafana)
   - [ ] Настраиваем логирование
   - [ ] Настраиваем GitOps (ArgoCD/Flux)
