@@ -37,12 +37,13 @@
         - [x] Настроить API Gateway как прокси к backend serverless container (публичный URL)
         - [x] Включить CORS/авторизацию для API, выдать gateway роль `serverless.containers.invoker`
         - [x] Проверка, что приложение доступно из Интернета
-  - [ ] Настраиваем CI/CD пайплайн
+  - [x] Настраиваем CI/CD пайплайн
     - [x] Настроить GitHub Actions/GitLab CI для сборки backend-образа и публикации в YCR
     - [x] Добавить шаг сборки фронтенда и выгрузки `dist` в Object Storage через CLI
     - [x] Подготовить отдельный job для `terraform apply`/`yc serverless` после публикации артефактов
     - [x] Подключить секреты (tokens/keys) и уведомления о статусе пайплайна
-    - [ ] Выполнить тестирование CI
+    - [x] Выполнить тестирование CI
+  - [ ] Мержим проект в master
   - [ ] Настраиваем мониторинг (Prometheus, Grafana)
   - [ ] Настраиваем логирование
   - [ ] Настраиваем GitOps (ArgoCD/Flux)
