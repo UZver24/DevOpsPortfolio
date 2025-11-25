@@ -54,5 +54,5 @@ export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=infrastructure/serverless output
 ./CI/build_frontend.sh
 ```
 
-В GitHub Actions workflow переменные (`STATIC_BUCKET_NAME`, `API_GATEWAY_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) автоматически извлекаются из Terraform outputs. Скрипт выполняет `npm ci`, `npm run build` и `yc storage s3 sync dist/ ...`.
+В GitHub Actions workflow переменные (`STATIC_BUCKET_NAME`, `API_GATEWAY_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) автоматически извлекаются из Terraform outputs. Скрипт выполняет `npm ci`, `npm run build` и `yc storage s3 cp --recursive dist/ ...`.
 

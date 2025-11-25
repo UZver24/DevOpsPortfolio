@@ -21,7 +21,7 @@ main() {
   VITE_API_BASE_URL="${API_GATEWAY_ENDPOINT}" npm run build
 
   echo "==> Загружаем dist/ в Object Storage (s3://${STATIC_BUCKET_NAME})"
-  yc storage s3 sync dist/ "s3://${STATIC_BUCKET_NAME}"
+  yc storage s3 cp --recursive dist/ "s3://${STATIC_BUCKET_NAME}"
 
   echo "Готово: фронтенд обновлён"
 }
