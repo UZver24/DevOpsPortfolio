@@ -26,7 +26,7 @@ async def get_skills():
             },
             {
                 "name": "Мониторинг и логирование",
-                "items": ["Yandex Monitoring", "Yandex Logging", "Prometheus", "Grafana", "ELK Stack", "Loki"]
+                "items": ["Yandex Monitoring", "Yandex Logging"]
             },
             {
                 "name": "Облачные платформы",
@@ -42,11 +42,11 @@ async def get_skills():
             },
             {
                 "name": "Базы данных",
-                "items": ["MS SQL Server", "PostgreSQL", "MongoDB", "Redis"]
+                "items": ["MS SQL Server", "PostgreSQL", "MySQL"]
             },
             {
                 "name": "Инструменты разработки",
-                "items": ["MS Visual Studio", "Visual Studio C#", "Git", "GitLab"]
+                "items": ["MS Visual Studio", "Visual Studio C#", "Git", "GitLab", "VibreCoding"]
             },
             {
                 "name": "CAD/CAM системы",
@@ -54,7 +54,7 @@ async def get_skills():
             },
             {
                 "name": "Дополнительные навыки",
-                "items": ["FinOps", "DevSecOps практики", "Проектирование электроники", "3D-моделирование", "Разработка прошивок для микроконтроллеров"]
+                "items": ["FinOps", "Проектирование электроники", "3D-моделирование", "Разработка прошивок для микроконтроллеров"]
             }
         ]
     )

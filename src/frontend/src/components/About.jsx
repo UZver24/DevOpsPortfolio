@@ -10,15 +10,21 @@ function About({ about }) {
         <div className="about-text">
           <p className="about-bio">{about.bio}</p>
           <div className="about-info">
-            <div className="info-item">
-              <strong>Местоположение:</strong> {about.location}
-            </div>
-            <div className="info-item">
-              <strong>Email:</strong> <a href={`mailto:${about.email}`}>{about.email}</a>
-            </div>
-            <div className="info-item">
-              <strong>GitHub:</strong> <a href={about.github} target="_blank" rel="noopener noreferrer">{about.github}</a>
-            </div>
+            {about.location && (
+              <div className="info-item">
+                <strong>Местоположение:</strong> {about.location}
+              </div>
+            )}
+            {about.email && (
+              <div className="info-item">
+                <strong>Email:</strong> <a href={`mailto:${about.email}`}>{about.email}</a>
+              </div>
+            )}
+            {about.github && (
+              <div className="info-item">
+                <strong>GitHub:</strong> <a href={about.github} target="_blank" rel="noopener noreferrer">{about.github}</a>
+              </div>
+            )}
           </div>
         </div>
       </div>

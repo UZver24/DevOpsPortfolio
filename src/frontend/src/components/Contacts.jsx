@@ -11,10 +11,12 @@ function Contacts({ contacts }) {
           Свяжитесь со мной, если у вас есть вопросы или предложения по сотрудничеству.
         </p>
         <div className="contacts-list">
-          <div className="contact-item">
-            <strong>Email:</strong>
-            <a href={`mailto:${contacts.email}`}>{contacts.email}</a>
-          </div>
+          {contacts.email && (
+            <div className="contact-item">
+              <strong>Email:</strong>
+              <a href={`mailto:${contacts.email}`}>{contacts.email}</a>
+            </div>
+          )}
           {contacts.github && (
             <div className="contact-item">
               <strong>GitHub:</strong>
@@ -35,7 +37,7 @@ function Contacts({ contacts }) {
             <div className="contact-item">
               <strong>Telegram:</strong>
               <a href={contacts.telegram} target="_blank" rel="noopener noreferrer">
-                {contacts.telegram}
+                {contacts.telegram.startsWith('https://') ? contacts.telegram.replace('https://t.me/', '@') : contacts.telegram}
               </a>
             </div>
           )}
