@@ -37,6 +37,22 @@
   color: var(--primary-color);
 }
 
+.github-link {
+  background: var(--primary-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.3s, transform 0.2s;
+  white-space: nowrap;
+}
+
+.github-link:hover {
+  background: var(--secondary-color);
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .header-container {
     flex-direction: column;
@@ -47,6 +63,11 @@
     gap: 1rem;
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .github-link {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
   }
 }
 

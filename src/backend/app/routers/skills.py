@@ -46,7 +46,7 @@ async def get_skills():
             },
             {
                 "name": "Инструменты разработки",
-                "items": ["MS Visual Studio", "Visual Studio C#", "Git", "GitLab", "VibreCoding"]
+                "items": ["MS Visual Studio", "Visual Studio C#", "Git", "GitLab", "VibeCoding"]
             },
             {
                 "name": "CAD/CAM системы",
