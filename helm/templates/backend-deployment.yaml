@@ -28,6 +28,8 @@ spec:
         - containerPort: 8000
           name: http
         env:
+        - name: PORT
+          value: "8000"
         - name: PYTHONUNBUFFERED
           value: "1"
         - name: PYTHONDONTWRITEBYTECODE
