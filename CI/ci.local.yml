@@ -1,0 +1,101 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-backend:
+    name: Сборка и публикация backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получение кода
+        run: echo "[mock uses] Получение кода"
+
+      - name: Настройка Docker Buildx
+        run: echo "[mock uses] Настройка Docker Buildx"
+
+      - name: Проверка секретов
+        run: echo "[mock] Проверка секретов"
+      - name: Авторизация в YCR
+        run: echo "[mock] Авторизация в YCR"
+      - name: Сборка и публикация backend-образа
+        env:
+          REGISTRY_ID: ${{ secrets.REGISTRY_ID }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          YC_IAM_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: echo "[mock] Сборка и публикация backend-образа"
+  deploy-infra:
+    name: Развертывание инфраструктуры
+    runs-on: ubuntu-latest
+    steps:
+      - name: Получение кода
+        run: echo "[mock uses] Получение кода"
+
+      - name: Установка Terraform
+        run: echo "[mock uses] Установка Terraform"
+      - name: Проверка существования API Gateway
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: echo "[mock] Проверка существования API Gateway"
+      - name: Создание terraform.tfvars
+        env:
+          API_GATEWAY_EXISTS: ${{ env.API_GATEWAY_EXISTS }}
+        run: echo "[mock] Создание terraform.tfvars"
+      - name: Инициализация Terraform
+        env:
+          # Используем IAM токен для terraform
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: echo "[mock] Инициализация Terraform"
+
+      - name: Удаление существующих сервисных аккаунтов
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+        run: echo "[mock] Удаление существующих сервисных аккаунтов"
+      - name: Применение Terraform
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          TF_INPUT: "false"
+        run: echo "[mock] Применение Terraform"
+      - name: Сохранение Terraform outputs
+        run: echo "[mock] Сохранение Terraform outputs"
+
+      - name: Загрузка артефактов Terraform
+        run: echo "[mock uses] Загрузка артефактов Terraform"
+  build-frontend:
+    name: Сборка и деплой фронтенда
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - name: Получение кода
+        run: echo "[mock uses] Получение кода"
+
+      - name: Загрузка артефактов Terraform
+        run: echo "[mock uses] Загрузка артефактов Terraform"
+      - name: Установка Yandex Cloud CLI
+        run: echo "[mock] Установка Yandex Cloud CLI"
+      - name: Настройка Node.js
+        run: echo "[mock uses] Настройка Node.js"
+      - name: Извлечение Terraform outputs
+        env:
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+        run: echo "[mock] Извлечение Terraform outputs"
+      - name: Сборка и деплой фронтенда
+        env:
+          API_GATEWAY_ENDPOINT: ${{ env.API_GATEWAY_ENDPOINT }}
+          STATIC_BUCKET_NAME: ${{ env.STATIC_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          YC_IAM_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+        run: echo "[mock] Сборка и деплой фронтенда"

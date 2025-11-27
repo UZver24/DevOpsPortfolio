@@ -56,3 +56,54 @@ export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=terraform/serverless output -raw
 
 В GitHub Actions workflow переменные (`STATIC_BUCKET_NAME`, `API_GATEWAY_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) автоматически извлекаются из Terraform outputs. Скрипт выполняет `npm ci`, `npm run build` и `yc storage s3 cp --recursive dist/ ...`.
 
+## Проверка GitHub Actions workflow без деплоя
+
+Чтобы убедиться, что `.github/workflows/ci.yml` корректен до пуша в репозиторий, используйте один или несколько методов:
+
+### 1. Локальный линтер `actionlint`
+
+`actionlint` — автономный линтер GitHub Actions workflow: проверяет синтаксис YAML, корректность событий, `uses`, `needs`, shell-скриптов и пр.
+
+#### Установка (Arch Linux)
+
+```bash
+sudo pacman -S actionlint
+```
+
+ИЛИ скачайте последний релиз:
+
+```bash
+curl -L https://github.com/rhysd/actionlint/releases/latest/download/actionlint_$(uname -s)_$(uname -m).tar.gz \
+  | tar -xz -C /tmp
+sudo mv /tmp/actionlint /usr/local/bin/
+```
+
+#### Проверка workflow
+
+```bash
+actionlint .github/workflows/ci.yml
+```
+
+- если файл корректен, команда завершится без вывода;
+- ошибки будут содержать ссылку на строку и подсказку, какую часть синтаксиса нужно поправить;
+- удобно добавлять в pre-commit или CI (например, `actionlint $(git ls-files '*.yml')`).
+
+### 2. `act` + подмена “опасных” шагов
+
+[`nektos/act`](https://github.com/nektos/act) запускает workflow локально в Docker, поэтому можно проверить логику пайплайна без коммита. Базовый сценарий:
+
+1. Установите `act` (в Arch Linux: `yay -S act` или скачайте бинарник с GitHub Releases).
+2. Подготовьте mock-секреты (например, создайте файл `.secrets` с `YC_IAM_TOKEN=dummy` и др.).
+3. Сгенерируйте безопасную копию workflow (скрипт после генерации автоматически вызовет `act push -W CI/ci.local.yml`):
+
+```bash
+./CI/generate_local_workflow.py    # создаёт CI/ci.local.yml
+```
+
+Скрипт заменяет все `run`-шаги на `echo "[mock] <название шага>"`, любые `uses` экшены тоже превращаются в безопасные `echo`, а `with:` блоки удаляются. Благодаря этому `act` отрабатывает последовательность заданий, не взаимодействуя с реальной инфраструктурой.
+
+### Другие методы проверки
+Возможен прогон на self-hosted runner, использование GitHub CLI `gh workflow run`, прямые вызовы REST API, если понадобится более “боевой” сценарий, но они потребуют мощностей для работы.
+
+**Совет:** перед любым способом тестирования готовьте отдельные секреты/токены для песочницы и не запускайте шаги, которые могут изменить прод-окружение.
+

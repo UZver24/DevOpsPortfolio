@@ -13,16 +13,16 @@ env:
 
 jobs:
   build-backend:
-    name: Build and Push Backend
+    name: Сборка и публикация backend
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Получение кода
+        uses: actions/checkout@v4  # Клонирует репозиторий в рабочий раннер
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Настройка Docker Buildx
+        uses: docker/setup-buildx-action@v3  # Включает Docker Buildx для мультиархитектурной сборки
 
-      - name: Verify secrets are set
+      - name: Проверка секретов
         run: |
           if [ -z "${{ secrets.YC_IAM_TOKEN }}" ]; then
             echo "❌ ERROR: YC_IAM_TOKEN secret is not set or empty"
@@ -36,12 +36,12 @@ jobs:
           echo "Registry: cr.yandex"
           echo "Registry ID: ${{ secrets.REGISTRY_ID }}"
 
-      - name: Login to Yandex Container Registry
+      - name: Авторизация в YCR
         run: |
           echo "${{ secrets.YC_IAM_TOKEN }}" | \
             docker login --username iam --password-stdin cr.yandex
 
-      - name: Build and push backend image
+      - name: Сборка и публикация backend-образа
         env:
           REGISTRY_ID: ${{ secrets.REGISTRY_ID }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
@@ -52,18 +52,18 @@ jobs:
           ./build_backend.sh
 
   deploy-infra:
-    name: Deploy Infrastructure
+    name: Развертывание инфраструктуры
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Получение кода
+        uses: actions/checkout@v4  # Скачивает код репозитория для Terraform
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Установка Terraform
+        uses: hashicorp/setup-terraform@v3  # Устанавливает Terraform указанной версии
         with:
           terraform_version: 1.6.6
 
-      - name: Check for existing API Gateway
+      - name: Проверка существования API Gateway
         working-directory: terraform/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
@@ -92,7 +92,7 @@ jobs:
             echo "✓ API Gateway '$API_GATEWAY_NAME' not found (or yc auth failed) - will attempt to create"
           fi
 
-      - name: Create terraform.tfvars
+      - name: Создание terraform.tfvars
         working-directory: terraform/serverless
         env:
           API_GATEWAY_EXISTS: ${{ env.API_GATEWAY_EXISTS }}
@@ -129,14 +129,14 @@ jobs:
           create_api_gateway = $CREATE_API_GATEWAY
           EOF
 
-      - name: Terraform Init
+      - name: Инициализация Terraform
         working-directory: terraform/serverless
         env:
           # Используем IAM токен для terraform
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
         run: terraform init
 
-      - name: Delete existing service accounts (if any)
+      - name: Удаление существующих сервисных аккаунтов
         working-directory: terraform/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
@@ -316,7 +316,7 @@ jobs:
             fi
           fi
 
-      - name: Terraform Apply
+      - name: Применение Terraform
         working-directory: terraform/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
@@ -367,45 +367,45 @@ jobs:
             fi
           fi
 
-      - name: Save Terraform Outputs
+      - name: Сохранение Terraform outputs
         working-directory: terraform/serverless
         run: terraform output -json > terraform-outputs.json
 
-      - name: Upload Terraform artifacts
-        uses: actions/upload-artifact@v4
+      - name: Загрузка артефактов Terraform
+        uses: actions/upload-artifact@v4  # Сохраняет состояние и выводы Terraform как артефакты
         with:
           name: terraform-state
           path: terraform/serverless/
           retention-days: 1
   build-frontend:
-    name: Build and Deploy Frontend
+    name: Сборка и деплой фронтенда
     runs-on: ubuntu-latest
     needs: deploy-infra
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Получение кода
+        uses: actions/checkout@v4  # Получает исходники для фронтенда
 
-      - name: Download Terraform artifacts
-        uses: actions/download-artifact@v4
+      - name: Загрузка артефактов Terraform
+        uses: actions/download-artifact@v4  # Загружает сохранённые артефакты Terraform
         with:
           name: terraform-state
           path: terraform/serverless/
 
-      - name: Install Yandex Cloud CLI
+      - name: Установка Yandex Cloud CLI
         run: |
           curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
           export PATH="$PATH:$HOME/yandex-cloud/bin"
           echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
           yc --version
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4  # Устанавливает Node.js и настраивает кэш npm
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: src/frontend/package-lock.json
 
-      - name: Extract Terraform outputs
+      - name: Извлечение Terraform outputs
         working-directory: terraform/serverless
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
@@ -488,7 +488,7 @@ jobs:
           echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}"
           echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}"
 
-      - name: Build and deploy frontend
+      - name: Сборка и деплой фронтенда
         working-directory: CI
         env:
           API_GATEWAY_ENDPOINT: ${{ env.API_GATEWAY_ENDPOINT }}
