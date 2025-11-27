@@ -1,63 +1,61 @@
 flowchart TB
+
     subgraph Triggers["Триггеры"]
-        Push[Push на любую ветку]
-        PR[Pull Request на любую ветку]
+        PushEvent[Push → main]
+        Pull_RequestEvent[Pull Request → main]
     end
-    
+
     subgraph Env["Переменные окружения"]
-        ImageTag[IMAGE_TAG = github.sha]
+        IMAGE_TAG[IMAGE_TAG]
     end
-    
-    subgraph Job1["Job: build-backend"]
+
+    subgraph Job1["Сборка и публикация backend"]
         direction TB
-        B1[Checkout code]
-        B2[Set up Docker Buildx]
-        B3[Verify secrets:<br/>YC_IAM_TOKEN, REGISTRY_ID]
-        B4[Login to Yandex Container Registry]
-        B5[Build and push backend image<br/>используя build_backend.sh]
-        
-        B1 --> B2 --> B3 --> B4 --> B5
+        A1[Получение кода]
+        A2[Настройка Docker Buildx]
+        A3[Проверка секретов]
+        A4[Авторизация в YCR]
+        A5[Сборка и публикация backend-образа]
+        A1 --> A2 --> A3 --> A4 --> A5
     end
-    
-    subgraph Job2["Job: deploy-infra"]
+
+    subgraph Job2["Развертывание инфраструктуры"]
         direction TB
-        D1[Checkout code]
-        D2[Setup Terraform 1.6.6]
-        D3[Check for existing API Gateway<br/>через yc CLI]
-        D4[Create terraform.tfvars<br/>с секретами и настройками]
-        D5[Terraform Init]
-        D6[Delete existing service accounts<br/>и импорт существующих ресурсов]
-        D7[Terraform Apply<br/>с обработкой ошибок API Gateway]
-        D8[Save Terraform Outputs<br/>в terraform-outputs.json]
-        D9[Upload Terraform artifacts]
-        
-        D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8 --> D9
+        B1[Получение кода]
+        B2[Установка Terraform]
+        B3[Проверка существования API Gateway]
+        B4[Создание terraform.tfvars]
+        B5[Инициализация Terraform]
+        B6[Удаление существующих сервисных аккаунтов]
+        B7[Применение Terraform]
+        B8[Сохранение Terraform outputs]
+        B9[Загрузка артефактов Terraform]
+        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8 --> B9
     end
-    
-    subgraph Job3["Job: build-frontend"]
+
+    subgraph Job3["Сборка и деплой фронтенда"]
         direction TB
-        F1[Checkout code]
-        F2[Download Terraform artifacts]
-        F3[Install Yandex Cloud CLI]
-        F4[Setup Node.js 20<br/>с npm cache]
-        F5[Extract Terraform outputs:<br/>bucket name, API endpoint,<br/>AWS credentials]
-        F6[Build and deploy frontend<br/>используя build_frontend.sh]
-        
-        F1 --> F2 --> F3 --> F4 --> F5 --> F6
+        C1[Получение кода]
+        C2[Загрузка артефактов Terraform]
+        C3[Установка Yandex Cloud CLI]
+        C4[Настройка Node.js]
+        C5[Извлечение Terraform outputs]
+        C6[Сборка и деплой фронтенда]
+        C1 --> C2 --> C3 --> C4 --> C5 --> C6
     end
-    
+
     Triggers --> Job1
     Triggers --> Job2
+    Job2 --> Job3
     Env --> Job1
     Env --> Job2
-    Job2 --> Job3
-    
+    Env --> Job3
+
     style Triggers fill:#e3f2fd
     style Env fill:#f3e5f5
     style Job1 fill:#fff3e0
     style Job2 fill:#fff3e0
     style Job3 fill:#fff3e0
-    style B5 fill:#c8e6c9
-    style D9 fill:#c8e6c9
-    style F6 fill:#c8e6c9
-
+    style A5 fill:#c8e6c9
+    style B9 fill:#c8e6c9
+    style C6 fill:#c8e6c9
