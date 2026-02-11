@@ -94,34 +94,20 @@ actionlint .github/workflows/ci.yml
 
 1. Установите `act` (в Arch Linux: `yay -S act` или скачайте бинарник с GitHub Releases).
 2. Подготовьте mock-секреты (например, создайте файл `.secrets` с `YC_IAM_TOKEN=dummy` и др.).
-3. Сгенерируйте безопасную копию workflow (скрипт после генерации автоматически вызовет `act push -W CI/ci.local.yml`):
+3. В `.github/workflows/ci.yml` временно замените шаги, которые реально создают/удаляют ресурсы (Terraform Apply, удаление сервисных аккаунтов и т.п.), на безопасные заглушки:
 
-```bash
-./CI/generate_local_workflow.py    # создаёт CI/ci.local.yml
+```yaml
+- name: Применение Terraform
+  run: echo "Skipped in local act run"
 ```
 
-Скрипт заменяет все `run`-шаги на `echo "[mock] <название шага>"`, любые `uses` экшены тоже превращаются в безопасные `echo`, а `with:` блоки удаляются. Благодаря этому `act` отрабатывает последовательность заданий, не взаимодействуя с реальной инфраструктурой.
-
-### 3. Генерация диаграммы Mermaid из workflow
-
-Чтобы поддерживать `.github/workflows/ci.yml.mermaid` в актуальном состоянии, используйте скрипт `CI/generate_mermaid.py`. Он читает `.github/workflows/ci.yml`, формирует subgraph’ы по job’ам и обновляет диаграмму в мермейде.
-
-1. Один раз создайте виртуальное окружение и поставьте зависимости:
+4. Запустите пайплайн:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install PyYAML
+act push -W .github/workflows/ci.yml
 ```
 
-2. Запустите генератор:
-
-```bash
-source .venv/bin/activate   # если ещё не активировали
-./CI/generate_mermaid.py
-```
-
-Диаграмма будет перезаписана в `.github/workflows/ci.yml.mermaid` с тем же оформлением, что и текущая ручная версия (цвета, финальные шаги подсвечены).
+Такой подход позволяет убедиться, что все зависимости, переменные окружения и последовательности шагов настроены правильно, при этом инфраструктура в Yandex Cloud не задействуется.
 
 ### Другие методы проверки
 Возможен прогон на self-hosted runner, использование GitHub CLI `gh workflow run`, прямые вызовы REST API, если понадобится более “боевой” сценарий, но они потребуют мощностей для работы.
