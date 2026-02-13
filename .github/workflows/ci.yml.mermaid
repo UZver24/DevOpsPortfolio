@@ -1,0 +1,47 @@
+flowchart TB
+
+    subgraph Triggers["Триггеры"]
+        PushMain[Push → main]
+        ManualDeploy[workflow_dispatch: action=deploy]
+        ManualDestroy[workflow_dispatch: action=destroy]
+    end
+
+    subgraph DeployJob["Job: Serverless Deploy"]
+        direction TB
+        S1[Checkout repository]
+        S2[Setup Node.js + Terraform + Docker Buildx]
+        S3[Install Yandex Cloud CLI]
+        S4[Configure yc profile]
+        S5[Generate terraform.tfvars]
+        S6[Terraform bootstrap apply]
+        S7[Build and push backend image]
+        S8[Terraform deploy apply]
+        S9[Build frontend]
+        S10[Upload frontend to Object Storage]
+        S11[Print outputs]
+
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11
+    end
+
+    subgraph DestroyJob["Job: Serverless Destroy"]
+        direction TB
+        D1[Checkout repository]
+        D2[Setup Terraform]
+        D3[Install Yandex Cloud CLI]
+        D4[Configure yc profile]
+        D5[Generate terraform.tfvars]
+        D6[Run serverless-destroy-all.sh]
+
+        D1 --> D2 --> D3 --> D4 --> D5 --> D6
+    end
+
+    PushMain --> DeployJob
+    ManualDeploy --> DeployJob
+    ManualDestroy --> DestroyJob
+
+    style Triggers fill:#e3f2fd
+    style DeployJob fill:#fff3e0
+    style DestroyJob fill:#ffe0e0
+    style S10 fill:#c8e6c9
+    style S11 fill:#c8e6c9
+    style D6 fill:#ffcdd2

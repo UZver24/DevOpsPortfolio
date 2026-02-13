@@ -12,7 +12,7 @@ main() {
   : "${AWS_ACCESS_KEY_ID:?Нужно указать access key (из Terraform output)}"
   : "${AWS_SECRET_ACCESS_KEY:?Нужно указать secret key (из Terraform output)}"
 
-  cd "${REPO_ROOT}/frontend"
+  cd "${REPO_ROOT}/src/frontend"
 
   echo "==> Устанавливаем зависимости"
   npm ci

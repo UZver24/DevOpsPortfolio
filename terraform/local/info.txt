@@ -1,0 +1,15 @@
+Учебный проект: локальная инфраструктура с minikube.
+
+Minikube кластер:
+  Имя: devops-portfolio
+  Драйвер: docker
+  CPU: 2
+  Память: 2048mb
+  Диск: 20g
+  Kubernetes версия: stable
+
+Для использования kubectl:
+  minikube kubectl -- -p devops-portfolio get nodes
+
+Для доступа к Docker образам minikube:
+  eval $(minikube -p devops-portfolio docker-env)

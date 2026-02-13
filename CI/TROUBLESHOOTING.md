@@ -126,7 +126,7 @@ export YC_OAUTH_TOKEN=$(yc iam create-token)
 ./CI/build_backend.sh
 
 # Проверка frontend скрипта (после terraform apply)
-cd infrastructure/serverless
+cd terraform/serverless
 export API_GATEWAY_ENDPOINT=$(terraform output -raw api_gateway_endpoint)
 export STATIC_BUCKET_NAME=$(terraform output -raw static_bucket_name)
 export AWS_ACCESS_KEY_ID=$(terraform output -raw static_site_access_key)

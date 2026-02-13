@@ -49,10 +49,68 @@ export YC_OAUTH_TOKEN=$(yc iam create-token)
 ```bash
 export STATIC_BUCKET_NAME=kulibin-devops-portfolio
 export API_GATEWAY_ENDPOINT=https://d5dm4d9170q82do7f5m8.lievo6ut.apigw.yandexcloud.net
-export AWS_ACCESS_KEY_ID=$(terraform -chdir=infrastructure/serverless output -raw static_site_access_key)
-export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=infrastructure/serverless output -raw static_site_secret_key)
+export AWS_ACCESS_KEY_ID=$(terraform -chdir=terraform/serverless output -raw static_site_access_key)
+export AWS_SECRET_ACCESS_KEY=$(terraform -chdir=terraform/serverless output -raw static_site_secret_key)
 ./CI/build_frontend.sh
 ```
 
 В GitHub Actions workflow переменные (`STATIC_BUCKET_NAME`, `API_GATEWAY_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) автоматически извлекаются из Terraform outputs. Скрипт выполняет `npm ci`, `npm run build` и `yc storage s3 cp --recursive dist/ ...`.
+
+## Проверка GitHub Actions workflow без деплоя
+
+Чтобы убедиться, что `.github/workflows/ci.yml` корректен до пуша в репозиторий, используйте один или несколько методов:
+
+### 1. Локальный линтер `actionlint`
+
+`actionlint` — автономный линтер GitHub Actions workflow: проверяет синтаксис YAML, корректность событий, `uses`, `needs`, shell-скриптов и пр.
+
+#### Установка (Arch Linux)
+
+```bash
+sudo pacman -S actionlint
+```
+
+ИЛИ скачайте последний релиз:
+
+```bash
+curl -L https://github.com/rhysd/actionlint/releases/latest/download/actionlint_$(uname -s)_$(uname -m).tar.gz \
+  | tar -xz -C /tmp
+sudo mv /tmp/actionlint /usr/local/bin/
+```
+
+#### Проверка workflow
+
+```bash
+actionlint .github/workflows/ci.yml
+```
+
+- если файл корректен, команда завершится без вывода;
+- ошибки будут содержать ссылку на строку и подсказку, какую часть синтаксиса нужно поправить;
+- удобно добавлять в pre-commit или CI (например, `actionlint $(git ls-files '*.yml')`).
+
+### 2. `act` + подмена “опасных” шагов
+
+[`nektos/act`](https://github.com/nektos/act) запускает workflow локально в Docker, поэтому можно проверить логику пайплайна без коммита. Базовый сценарий:
+
+1. Установите `act` (в Arch Linux: `yay -S act` или скачайте бинарник с GitHub Releases).
+2. Подготовьте mock-секреты (например, создайте файл `.secrets` с `YC_IAM_TOKEN=dummy` и др.).
+3. В `.github/workflows/ci.yml` временно замените шаги, которые реально создают/удаляют ресурсы (Terraform Apply, удаление сервисных аккаунтов и т.п.), на безопасные заглушки:
+
+```yaml
+- name: Применение Terraform
+  run: echo "Skipped in local act run"
+```
+
+4. Запустите пайплайн:
+
+```bash
+act push -W .github/workflows/ci.yml
+```
+
+Такой подход позволяет убедиться, что все зависимости, переменные окружения и последовательности шагов настроены правильно, при этом инфраструктура в Yandex Cloud не задействуется.
+
+### Другие методы проверки
+Возможен прогон на self-hosted runner, использование GitHub CLI `gh workflow run`, прямые вызовы REST API, если понадобится более “боевой” сценарий, но они потребуют мощностей для работы.
+
+**Совет:** перед любым способом тестирования готовьте отдельные секреты/токены для песочницы и не запускайте шаги, которые могут изменить прод-окружение.
 

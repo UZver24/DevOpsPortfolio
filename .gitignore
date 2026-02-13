@@ -33,8 +33,15 @@ dist/
 dist-ssr/
 *.local
 
+# Application-specific (для ясности)
+src/backend/venv/
+src/frontend/node_modules/
+src/frontend/dist/
+
 # IDE
 .vscode/
+!.vscode/
+!.vscode/tasks.json
 .idea/
 *.swp
 *.swo
@@ -53,14 +60,15 @@ logs/
 # OS
 Thumbs.db
 
-# Terraform artifacts (infrastructure)
-infrastructure/**/.terraform/
-infrastructure/**/*.tfstate
-infrastructure/**/*.tfstate.*
-infrastructure/**/crash.log
-infrastructure/**/.terraform.lock.hcl
+# Terraform artifacts
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.*
+terraform/**/crash.log
+# .terraform.lock.hcl - коммитим для фиксации версий провайдеров
 
 # Terraform secrets (облако)
-infrastructure/**/terraform.tfvars
-infrastructure/**/*.auto.tfvars
+terraform/**/terraform.tfvars
+terraform/**/*.auto.tfvars
 
+Резюме _Инженер-программист, системный администратор, DevOps_.html

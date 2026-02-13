@@ -1,0 +1,109 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "0_serverless: prepare tfvars (yc token)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-prepare-tfvars.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "1_serverless: bootstrap init",
+      "type": "shell",
+      "command": "terraform init",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/bootstrap"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "2_serverless: bootstrap apply",
+      "type": "shell",
+      "command": "terraform apply -var-file=../terraform.tfvars",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/bootstrap"
+      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "0_serverless: prepare tfvars (yc token)",
+        "1_serverless: bootstrap init"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "3_serverless: build+push backend image",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-build-push-backend.sh",
+      "dependsOn": "2_serverless: bootstrap apply",
+      "problemMatcher": []
+    },
+    {
+      "label": "4_serverless: deploy init",
+      "type": "shell",
+      "command": "terraform init",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/deploy"
+      },
+      "dependsOn": "2_serverless: bootstrap apply",
+      "problemMatcher": []
+    },
+    {
+      "label": "5_serverless: deploy apply",
+      "type": "shell",
+      "command": "terraform apply -var-file=../terraform.tfvars",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/deploy"
+      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "4_serverless: deploy init",
+        "3_serverless: build+push backend image"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "6_serverless: build frontend (api gateway)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-build-frontend.sh",
+      "dependsOn": "5_serverless: deploy apply",
+      "problemMatcher": []
+    },
+    {
+      "label": "7_serverless: upload frontend dist",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-upload-frontend.sh",
+      "dependsOn": "6_serverless: build frontend (api gateway)",
+      "problemMatcher": []
+    },
+    {
+      "label": "8_serverless: show bootstrap outputs",
+      "type": "shell",
+      "command": "terraform output",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/bootstrap"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "9_serverless: show deploy outputs",
+      "type": "shell",
+      "command": "terraform output",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/deploy"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "__serverless: full deploy (bootstrap + deploy + frontend)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-full-deploy.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "X_serverless: destroy all (deploy + bootstrap)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-destroy-all.sh",
+      "problemMatcher": []
+    }
+  ]
+}
