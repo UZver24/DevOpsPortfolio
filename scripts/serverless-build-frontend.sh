@@ -26,6 +26,10 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 API_URL="$(terraform -chdir="$DEPLOY_DIR" output -raw api_gateway_endpoint 2>/dev/null || true)"
+API_URL="$(printf '%s' "$API_URL" | tr -d '\r' | head -n1)"
+if [[ ! "$API_URL" =~ ^https?:// ]]; then
+  API_URL=""
+fi
 
 if [[ -z "$API_URL" || "$API_URL" == "null" ]]; then
   TFVARS_FILE="$ROOT_DIR/terraform/serverless/terraform.tfvars"
