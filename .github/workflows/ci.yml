@@ -124,6 +124,7 @@ jobs:
       - name: Terraform deploy apply
         run: |
           terraform -chdir=terraform/serverless/deploy init
+          ./scripts/serverless-deploy-import.sh
           terraform -chdir=terraform/serverless/deploy apply -auto-approve -var-file=../terraform.tfvars
 
       - name: Build frontend

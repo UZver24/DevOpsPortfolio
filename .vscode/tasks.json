@@ -58,7 +58,17 @@
       "problemMatcher": []
     },
     {
-      "label": "6_serverless: deploy apply",
+      "label": "6_serverless: deploy import precheck",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-deploy-import.sh",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "5_serverless: deploy init"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "7_serverless: deploy apply",
       "type": "shell",
       "command": "terraform apply -var-file=../terraform.tfvars",
       "options": {
@@ -66,27 +76,27 @@
       },
       "dependsOrder": "sequence",
       "dependsOn": [
-        "5_serverless: deploy init",
+        "6_serverless: deploy import precheck",
         "4_serverless: build+push backend image"
       ],
       "problemMatcher": []
     },
     {
-      "label": "7_serverless: build frontend (api gateway)",
+      "label": "8_serverless: build frontend (api gateway)",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/serverless-build-frontend.sh",
-      "dependsOn": "6_serverless: deploy apply",
+      "dependsOn": "7_serverless: deploy apply",
       "problemMatcher": []
     },
     {
-      "label": "8_serverless: upload frontend dist",
+      "label": "9_serverless: upload frontend dist",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/serverless-upload-frontend.sh",
-      "dependsOn": "7_serverless: build frontend (api gateway)",
+      "dependsOn": "8_serverless: build frontend (api gateway)",
       "problemMatcher": []
     },
     {
-      "label": "9_serverless: show bootstrap outputs",
+      "label": "10_serverless: show bootstrap outputs",
       "type": "shell",
       "command": "terraform output",
       "options": {
@@ -95,7 +105,7 @@
       "problemMatcher": []
     },
     {
-      "label": "10_serverless: show deploy outputs",
+      "label": "11_serverless: show deploy outputs",
       "type": "shell",
       "command": "terraform output",
       "options": {

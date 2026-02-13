@@ -17,12 +17,13 @@ flowchart TB
         S6[Bootstrap import precheck]
         S7[Terraform bootstrap apply]
         S8[Build and push backend image]
-        S9[Terraform deploy apply]
-        S10[Build frontend]
-        S11[Upload frontend to Object Storage]
-        S12[Print outputs]
+        S9[Deploy import precheck]
+        S10[Terraform deploy apply]
+        S11[Build frontend]
+        S12[Upload frontend to Object Storage]
+        S13[Print outputs]
 
-        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13
     end
 
     subgraph DestroyJob["Job: Serverless Destroy"]
@@ -45,6 +46,6 @@ flowchart TB
     style Triggers fill:#e3f2fd
     style DeployJob fill:#fff3e0
     style DestroyJob fill:#ffe0e0
-    style S11 fill:#c8e6c9
     style S12 fill:#c8e6c9
+    style S13 fill:#c8e6c9
     style D6 fill:#ffcdd2
