@@ -85,11 +85,15 @@ FRONTEND_CONTAINER_ID="$(jq -r --arg name "$FRONTEND_CONTAINER_NAME" --arg folde
 API_GATEWAY_ID="$(jq -r --arg name "$API_GATEWAY_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .id // empty' <<<"$YC_API_GWS_JSON")"
 
 import_if_missing "yandex_serverless_container.backend" "$BACKEND_CONTAINER_ID"
-import_if_missing "yandex_serverless_container_iam_binding.backend_public" "${BACKEND_CONTAINER_ID}/serverless.containers.invoker"
+if [[ -n "$BACKEND_CONTAINER_ID" ]]; then
+  import_if_missing "yandex_serverless_container_iam_binding.backend_public" "${BACKEND_CONTAINER_ID},serverless.containers.invoker"
+fi
 
 if [[ "$ENABLE_FRONTEND_CONTAINER" == "true" ]]; then
   import_if_missing "yandex_serverless_container.frontend[0]" "$FRONTEND_CONTAINER_ID"
-  import_if_missing "yandex_serverless_container_iam_binding.frontend_public[0]" "${FRONTEND_CONTAINER_ID}/serverless.containers.invoker"
+  if [[ -n "$FRONTEND_CONTAINER_ID" ]]; then
+    import_if_missing "yandex_serverless_container_iam_binding.frontend_public[0]" "${FRONTEND_CONTAINER_ID},serverless.containers.invoker"
+  fi
 fi
 
 if [[ "$CREATE_API_GATEWAY" == "true" ]]; then
