@@ -103,6 +103,7 @@ jobs:
       - name: Terraform bootstrap apply
         run: |
           terraform -chdir=terraform/serverless/bootstrap init
+          ./scripts/serverless-bootstrap-import.sh
           terraform -chdir=terraform/serverless/bootstrap apply -auto-approve -var-file=../terraform.tfvars
 
       - name: Build and push backend image
