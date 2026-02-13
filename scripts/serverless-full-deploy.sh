@@ -9,6 +9,7 @@ DEPLOY_DIR="$ROOT_DIR/terraform/serverless/deploy"
 "$ROOT_DIR/scripts/serverless-prepare-tfvars.sh"
 
 terraform -chdir="$BOOTSTRAP_DIR" init
+"$ROOT_DIR/scripts/serverless-bootstrap-import.sh" "$TFVARS_FILE"
 terraform -chdir="$BOOTSTRAP_DIR" apply -auto-approve -var-file="$TFVARS_FILE"
 
 "$ROOT_DIR/scripts/serverless-build-push-backend.sh"

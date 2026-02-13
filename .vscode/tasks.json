@@ -17,12 +17,9 @@
       "problemMatcher": []
     },
     {
-      "label": "2_serverless: bootstrap apply",
+      "label": "2_serverless: bootstrap import precheck",
       "type": "shell",
-      "command": "terraform apply -var-file=../terraform.tfvars",
-      "options": {
-        "cwd": "${workspaceFolder}/terraform/serverless/bootstrap"
-      },
+      "command": "${workspaceFolder}/scripts/serverless-bootstrap-import.sh",
       "dependsOrder": "sequence",
       "dependsOn": [
         "0_serverless: prepare tfvars (yc token)",
@@ -31,24 +28,37 @@
       "problemMatcher": []
     },
     {
-      "label": "3_serverless: build+push backend image",
+      "label": "3_serverless: bootstrap apply",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/serverless-build-push-backend.sh",
-      "dependsOn": "2_serverless: bootstrap apply",
+      "command": "terraform apply -var-file=../terraform.tfvars",
+      "options": {
+        "cwd": "${workspaceFolder}/terraform/serverless/bootstrap"
+      },
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "2_serverless: bootstrap import precheck"
+      ],
       "problemMatcher": []
     },
     {
-      "label": "4_serverless: deploy init",
+      "label": "4_serverless: build+push backend image",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/serverless-build-push-backend.sh",
+      "dependsOn": "3_serverless: bootstrap apply",
+      "problemMatcher": []
+    },
+    {
+      "label": "5_serverless: deploy init",
       "type": "shell",
       "command": "terraform init",
       "options": {
         "cwd": "${workspaceFolder}/terraform/serverless/deploy"
       },
-      "dependsOn": "2_serverless: bootstrap apply",
+      "dependsOn": "3_serverless: bootstrap apply",
       "problemMatcher": []
     },
     {
-      "label": "5_serverless: deploy apply",
+      "label": "6_serverless: deploy apply",
       "type": "shell",
       "command": "terraform apply -var-file=../terraform.tfvars",
       "options": {
@@ -56,27 +66,27 @@
       },
       "dependsOrder": "sequence",
       "dependsOn": [
-        "4_serverless: deploy init",
-        "3_serverless: build+push backend image"
+        "5_serverless: deploy init",
+        "4_serverless: build+push backend image"
       ],
       "problemMatcher": []
     },
     {
-      "label": "6_serverless: build frontend (api gateway)",
+      "label": "7_serverless: build frontend (api gateway)",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/serverless-build-frontend.sh",
-      "dependsOn": "5_serverless: deploy apply",
+      "dependsOn": "6_serverless: deploy apply",
       "problemMatcher": []
     },
     {
-      "label": "7_serverless: upload frontend dist",
+      "label": "8_serverless: upload frontend dist",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/serverless-upload-frontend.sh",
-      "dependsOn": "6_serverless: build frontend (api gateway)",
+      "dependsOn": "7_serverless: build frontend (api gateway)",
       "problemMatcher": []
     },
     {
-      "label": "8_serverless: show bootstrap outputs",
+      "label": "9_serverless: show bootstrap outputs",
       "type": "shell",
       "command": "terraform output",
       "options": {
@@ -85,7 +95,7 @@
       "problemMatcher": []
     },
     {
-      "label": "9_serverless: show deploy outputs",
+      "label": "10_serverless: show deploy outputs",
       "type": "shell",
       "command": "terraform output",
       "options": {
