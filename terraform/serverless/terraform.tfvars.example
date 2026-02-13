@@ -3,22 +3,24 @@ yc_cloud_id  = ""
 yc_folder_id = ""
 yc_zone      = "ru-central1-a"
 
-backend_image = "cr.yandex/your_registry/backend:latest"
-backend_memory_mb = 256
-backend_cpu = 0.1
-backend_concurrency = 8
-backend_env = {}
+project_name = "devops-portfolio-serverless"
+environment  = "dev"
 
-frontend_image        = "cr.yandex/your_registry/frontend:latest"
-frontend_memory_mb    = 128
-frontend_cpu          = 0.05
-frontend_concurrency  = 8
-frontend_env          = {}
+container_registry_name = "kulibin-devops-portfolio"
+backend_image_tag       = "latest"
+
+backend_memory_mb  = 256
+backend_cpu        = 0.1
+backend_concurrency = 8
+backend_env        = {}
+
+frontend_image           = ""
+frontend_memory_mb       = 128
+frontend_cpu             = 0.05
+frontend_concurrency     = 8
+frontend_env             = {}
 enable_frontend_container = false
 
-container_registry_id = "crpXXXX"
-
-environment = "dev"
 static_bucket_name = "kulibin-devops-portfolio"
 static_allowed_origins = [
   "https://kulibin-devops-portfolio.website.yandexcloud.net",
@@ -29,6 +31,4 @@ api_allowed_origins = [
   "http://localhost:5173",
 ]
 
-
-
-
+create_api_gateway = true
