@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
   workflow_dispatch:
     inputs:
       action:
@@ -48,25 +49,36 @@ jobs:
 
       - name: Configure yc profile
         env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_OAUTH_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
           yc config profile create ci || true
-          yc config set iam-token "$YC_TOKEN"
+          if [[ -z "${YC_OAUTH_TOKEN:-}" ]]; then
+            echo "YC_OAUTH_TOKEN secret is not set" >&2
+            exit 1
+          fi
+          yc config set token "$YC_OAUTH_TOKEN"
           yc config set cloud-id "$YC_CLOUD_ID"
           yc config set folder-id "$YC_FOLDER_ID"
+          YC_IAM_TOKEN="$(yc iam create-token | tr -d '\r\n')"
+          if [[ -z "$YC_IAM_TOKEN" ]]; then
+            echo "Failed to generate IAM token from YC_OAUTH_TOKEN" >&2
+            exit 1
+          fi
+          echo "::add-mask::$YC_IAM_TOKEN"
+          echo "YC_IAM_TOKEN=$YC_IAM_TOKEN" >> "$GITHUB_ENV"
 
       - name: Generate terraform.tfvars
         env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_IAM_TOKEN: ${{ env.YC_IAM_TOKEN }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
           YC_ZONE: ${{ secrets.YC_ZONE }}
           STATIC_BUCKET_NAME: ${{ secrets.STATIC_BUCKET_NAME }}
         run: |
           cat > "$TFVARS_FILE" <<EOFVARS
-          yc_token = "$YC_TOKEN"
+          yc_token = "$YC_IAM_TOKEN"
           yc_cloud_id = "$YC_CLOUD_ID"
           yc_folder_id = "$YC_FOLDER_ID"
           yc_zone = "${YC_ZONE:-ru-central1-a}"
@@ -148,25 +160,36 @@ jobs:
 
       - name: Configure yc profile
         env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_OAUTH_TOKEN: ${{ secrets.YC_OAUTH_TOKEN }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
           yc config profile create ci || true
-          yc config set iam-token "$YC_TOKEN"
+          if [[ -z "${YC_OAUTH_TOKEN:-}" ]]; then
+            echo "YC_OAUTH_TOKEN secret is not set" >&2
+            exit 1
+          fi
+          yc config set token "$YC_OAUTH_TOKEN"
           yc config set cloud-id "$YC_CLOUD_ID"
           yc config set folder-id "$YC_FOLDER_ID"
+          YC_IAM_TOKEN="$(yc iam create-token | tr -d '\r\n')"
+          if [[ -z "$YC_IAM_TOKEN" ]]; then
+            echo "Failed to generate IAM token from YC_OAUTH_TOKEN" >&2
+            exit 1
+          fi
+          echo "::add-mask::$YC_IAM_TOKEN"
+          echo "YC_IAM_TOKEN=$YC_IAM_TOKEN" >> "$GITHUB_ENV"
 
       - name: Generate terraform.tfvars
         env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_IAM_TOKEN: ${{ env.YC_IAM_TOKEN }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
           YC_ZONE: ${{ secrets.YC_ZONE }}
           STATIC_BUCKET_NAME: ${{ secrets.STATIC_BUCKET_NAME }}
         run: |
           cat > "$TFVARS_FILE" <<EOFVARS
-          yc_token = "$YC_TOKEN"
+          yc_token = "$YC_IAM_TOKEN"
           yc_cloud_id = "$YC_CLOUD_ID"
           yc_folder_id = "$YC_FOLDER_ID"
           yc_zone = "${YC_ZONE:-ru-central1-a}"

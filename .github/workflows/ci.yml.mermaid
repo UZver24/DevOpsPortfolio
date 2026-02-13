@@ -2,6 +2,7 @@ flowchart TB
 
     subgraph Triggers["Триггеры"]
         PushMain[Push → main]
+        PushDevelop[Push → develop]
         ManualDeploy[workflow_dispatch: action=deploy]
         ManualDestroy[workflow_dispatch: action=destroy]
     end
@@ -11,7 +12,7 @@ flowchart TB
         S1[Checkout repository]
         S2[Setup Node.js + Terraform + Docker Buildx]
         S3[Install Yandex Cloud CLI]
-        S4[Configure yc profile]
+        S4[Configure yc profile + create IAM token]
         S5[Generate terraform.tfvars]
         S6[Bootstrap import precheck]
         S7[Terraform bootstrap apply]
@@ -29,7 +30,7 @@ flowchart TB
         D1[Checkout repository]
         D2[Setup Terraform]
         D3[Install Yandex Cloud CLI]
-        D4[Configure yc profile]
+        D4[Configure yc profile + create IAM token]
         D5[Generate terraform.tfvars]
         D6[Run serverless-destroy-all.sh]
 
@@ -37,6 +38,7 @@ flowchart TB
     end
 
     PushMain --> DeployJob
+    PushDevelop --> DeployJob
     ManualDeploy --> DeployJob
     ManualDestroy --> DestroyJob
 
