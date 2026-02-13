@@ -70,10 +70,7 @@
     {
       "label": "7_serverless: deploy apply",
       "type": "shell",
-      "command": "terraform apply -var-file=../terraform.tfvars",
-      "options": {
-        "cwd": "${workspaceFolder}/terraform/serverless/deploy"
-      },
+      "command": "${workspaceFolder}/scripts/serverless-deploy-apply.sh",
       "dependsOrder": "sequence",
       "dependsOn": [
         "6_serverless: deploy import precheck",

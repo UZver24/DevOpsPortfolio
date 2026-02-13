@@ -10,16 +10,39 @@ if ! command -v terraform >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v yc >/dev/null 2>&1; then
+  echo "yc is not installed" >&2
+  exit 1
+fi
+
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm is not installed" >&2
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is not installed" >&2
   exit 1
 fi
 
 API_URL="$(terraform -chdir="$DEPLOY_DIR" output -raw api_gateway_endpoint 2>/dev/null || true)"
 
 if [[ -z "$API_URL" || "$API_URL" == "null" ]]; then
-  echo "api_gateway_endpoint is empty. Run deploy apply first." >&2
-  exit 1
+  TFVARS_FILE="$ROOT_DIR/terraform/serverless/terraform.tfvars"
+  FOLDER_ID="$(sed -nE 's|^[[:space:]]*yc_folder_id[[:space:]]*=[[:space:]]*"([^"]*)".*$|\1|p' "$TFVARS_FILE" | head -n1)"
+  PROJECT_NAME="$(sed -nE 's|^[[:space:]]*project_name[[:space:]]*=[[:space:]]*"([^"]*)".*$|\1|p' "$TFVARS_FILE" | head -n1)"
+  if [[ -z "$PROJECT_NAME" ]]; then
+    PROJECT_NAME="devops-portfolio-serverless"
+  fi
+  API_GATEWAY_NAME="${PROJECT_NAME}-api"
+  API_DOMAIN="$(yc serverless api-gateway list --format json | jq -r --arg name "$API_GATEWAY_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .domain // empty')"
+  if [[ -n "$API_DOMAIN" ]]; then
+    API_URL="https://${API_DOMAIN}"
+    echo "api_gateway_endpoint output is empty, fallback to existing gateway: $API_URL"
+  else
+    echo "api_gateway_endpoint is empty and existing API Gateway was not found." >&2
+    exit 1
+  fi
 fi
 
 echo "Using API URL: $API_URL"

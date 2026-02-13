@@ -14,9 +14,7 @@ terraform -chdir="$BOOTSTRAP_DIR" apply -auto-approve -var-file="$TFVARS_FILE"
 
 "$ROOT_DIR/scripts/serverless-build-push-backend.sh"
 
-terraform -chdir="$DEPLOY_DIR" init
-"$ROOT_DIR/scripts/serverless-deploy-import.sh" "$TFVARS_FILE"
-terraform -chdir="$DEPLOY_DIR" apply -auto-approve -var-file="$TFVARS_FILE"
+"$ROOT_DIR/scripts/serverless-deploy-apply.sh" "$TFVARS_FILE"
 
 "$ROOT_DIR/scripts/serverless-build-frontend.sh"
 "$ROOT_DIR/scripts/serverless-upload-frontend.sh"

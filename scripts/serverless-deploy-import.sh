@@ -79,6 +79,7 @@ fi
 BACKEND_CONTAINER_NAME="${PROJECT_NAME}-backend"
 FRONTEND_CONTAINER_NAME="${PROJECT_NAME}-frontend"
 API_GATEWAY_NAME="${PROJECT_NAME}-api"
+MARKER_FILE="$DEPLOY_DIR/.api_gateway_exists_without_state"
 
 YC_CONTAINERS_JSON="$(yc serverless container list --format json)"
 YC_API_GWS_JSON="$(yc serverless api-gateway list --format json)"
@@ -99,8 +100,12 @@ if [[ "$ENABLE_FRONTEND_CONTAINER" == "true" ]]; then
   fi
 fi
 
-if [[ "$CREATE_API_GATEWAY" == "true" ]]; then
-  import_if_missing "yandex_api_gateway.backend[0]" "$API_GATEWAY_ID"
+rm -f "$MARKER_FILE"
+if [[ "$CREATE_API_GATEWAY" == "true" ]] && [[ -n "$API_GATEWAY_ID" ]] && ! state_has "yandex_api_gateway.backend[0]"; then
+  # yandex_api_gateway import is not implemented in the provider.
+  printf '%s\n' "$API_GATEWAY_ID" > "$MARKER_FILE"
+  echo "Found existing API Gateway ($API_GATEWAY_ID) without Terraform state."
+  echo "Will skip API Gateway creation in apply step for this run."
 fi
 
 echo "Deploy import precheck completed."
