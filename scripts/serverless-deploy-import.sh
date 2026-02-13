@@ -50,7 +50,10 @@ import_if_missing() {
     return 0
   fi
   echo "Importing $addr <= $id"
-  terraform -chdir="$DEPLOY_DIR" import -var-file="$TFVARS_FILE" "$addr" "$id" >/dev/null
+  if ! timeout 180s terraform -chdir="$DEPLOY_DIR" import -var-file="$TFVARS_FILE" "$addr" "$id"; then
+    echo "Import failed or timed out for $addr" >&2
+    exit 1
+  fi
 }
 
 FOLDER_ID="$(get_hcl_string_var "yc_folder_id")"
