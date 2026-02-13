@@ -1,61 +1,47 @@
 flowchart TB
 
     subgraph Triggers["Триггеры"]
-        PushEvent[Push → main]
-        Pull_RequestEvent[Pull Request → main]
+        PushMain[Push → main]
+        ManualDeploy[workflow_dispatch: action=deploy]
+        ManualDestroy[workflow_dispatch: action=destroy]
     end
 
-    subgraph Env["Переменные окружения"]
-        IMAGE_TAG[IMAGE_TAG]
-    end
-
-    subgraph Job1["Сборка и публикация backend"]
+    subgraph DeployJob["Job: Serverless Deploy"]
         direction TB
-        A1[Получение кода]
-        A2[Настройка Docker Buildx]
-        A3[Проверка секретов]
-        A4[Авторизация в YCR]
-        A5[Сборка и публикация backend-образа]
-        A1 --> A2 --> A3 --> A4 --> A5
+        S1[Checkout repository]
+        S2[Setup Node.js + Terraform + Docker Buildx]
+        S3[Install Yandex Cloud CLI]
+        S4[Configure yc profile]
+        S5[Generate terraform.tfvars]
+        S6[Terraform bootstrap apply]
+        S7[Build and push backend image]
+        S8[Terraform deploy apply]
+        S9[Build frontend]
+        S10[Upload frontend to Object Storage]
+        S11[Print outputs]
+
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9 --> S10 --> S11
     end
 
-    subgraph Job2["Развертывание инфраструктуры"]
+    subgraph DestroyJob["Job: Serverless Destroy"]
         direction TB
-        B1[Получение кода]
-        B2[Установка Terraform]
-        B3[Проверка существования API Gateway]
-        B4[Создание terraform.tfvars]
-        B5[Инициализация Terraform]
-        B6[Удаление существующих сервисных аккаунтов]
-        B7[Применение Terraform]
-        B8[Сохранение Terraform outputs]
-        B9[Загрузка артефактов Terraform]
-        B1 --> B2 --> B3 --> B4 --> B5 --> B6 --> B7 --> B8 --> B9
+        D1[Checkout repository]
+        D2[Setup Terraform]
+        D3[Install Yandex Cloud CLI]
+        D4[Configure yc profile]
+        D5[Generate terraform.tfvars]
+        D6[Run serverless-destroy-all.sh]
+
+        D1 --> D2 --> D3 --> D4 --> D5 --> D6
     end
 
-    subgraph Job3["Сборка и деплой фронтенда"]
-        direction TB
-        C1[Получение кода]
-        C2[Загрузка артефактов Terraform]
-        C3[Установка Yandex Cloud CLI]
-        C4[Настройка Node.js]
-        C5[Извлечение Terraform outputs]
-        C6[Сборка и деплой фронтенда]
-        C1 --> C2 --> C3 --> C4 --> C5 --> C6
-    end
-
-    Triggers --> Job1
-    Triggers --> Job2
-    Job2 --> Job3
-    Env --> Job1
-    Env --> Job2
-    Env --> Job3
+    PushMain --> DeployJob
+    ManualDeploy --> DeployJob
+    ManualDestroy --> DestroyJob
 
     style Triggers fill:#e3f2fd
-    style Env fill:#f3e5f5
-    style Job1 fill:#fff3e0
-    style Job2 fill:#fff3e0
-    style Job3 fill:#fff3e0
-    style A5 fill:#c8e6c9
-    style B9 fill:#c8e6c9
-    style C6 fill:#c8e6c9
+    style DeployJob fill:#fff3e0
+    style DestroyJob fill:#ffe0e0
+    style S10 fill:#c8e6c9
+    style S11 fill:#c8e6c9
+    style D6 fill:#ffcdd2

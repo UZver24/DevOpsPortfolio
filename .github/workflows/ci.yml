@@ -1,493 +1,203 @@
-name: CI/CD Pipeline
+name: Serverless Deploy
 
 on:
   push:
     branches:
-      - '*'
-  pull_request:
-    branches:
-      - '*'
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose workflow action"
+        required: true
+        default: "deploy"
+        type: choice
+        options:
+          - deploy
+          - destroy
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  TFVARS_FILE: terraform/serverless/terraform.tfvars
 
 jobs:
-  build-backend:
-    name: Сборка и публикация backend
+  deploy-serverless:
+    name: Bootstrap + Deploy + Frontend Upload
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy') }}
+
     steps:
-      - name: Получение кода
-        uses: actions/checkout@v4  # Клонирует репозиторий в рабочий раннер
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Настройка Docker Buildx
-        uses: docker/setup-buildx-action@v3  # Включает Docker Buildx для мультиархитектурной сборки
-
-      - name: Авторизация в YCR
-        uses: docker/login-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          registry: cr.yandex
-          username: iam
-          password: ${{ secrets.YC_IAM_TOKEN }}
+          node-version: '20'
 
-      - name: Сборка и публикация backend-образа
-        uses: docker/build-push-action@v5
-        with:
-          context: src/backend
-          push: true
-          tags: cr.yandex/${{ secrets.REGISTRY_ID }}/backend:${{ env.IMAGE_TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy-infra:
-    if: ${{ false }}
-    name: Развертывание инфраструктуры
-    runs-on: ubuntu-latest
-    steps:
-      - name: Получение кода
-        uses: actions/checkout@v4  # Скачивает код репозитория для Terraform
-
-      - name: Установка Terraform
-        uses: hashicorp/setup-terraform@v3  # Устанавливает Terraform указанной версии
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
-      - name: Проверка существования API Gateway
-        working-directory: terraform/serverless
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Yandex Cloud CLI
+        run: |
+          curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash -s -- -a
+          echo "$HOME/yandex-cloud/bin" >> "$GITHUB_PATH"
+
+      - name: Configure yc profile
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
-          # Устанавливаем yc CLI для проверки
-          curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash >/dev/null 2>&1 || true
-          export PATH="$PATH:$HOME/yandex-cloud/bin"
-          
-          # Настраиваем авторизацию
-          export YC_TOKEN="$YC_TOKEN"
-          export YC_FOLDER_ID="${{ secrets.YC_FOLDER_ID }}"
-          export YC_CLOUD_ID="${{ secrets.YC_CLOUD_ID }}"
-          yc config set token "$YC_TOKEN" >/dev/null 2>&1 || true
-          yc config set folder-id "${{ secrets.YC_FOLDER_ID }}" >/dev/null 2>&1 || true
-          yc config set cloud-id "${{ secrets.YC_CLOUD_ID }}" >/dev/null 2>&1 || true
-          
-          # Проверяем существование API Gateway
-          API_GATEWAY_NAME="devops-portfolio-serverless-api"
-          if yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json >/dev/null 2>&1; then
-            echo "API_GATEWAY_EXISTS=true" >> $GITHUB_ENV
-            echo "ℹ️  API Gateway '$API_GATEWAY_NAME' already exists - will not create (Terraform import not supported)"
-            echo "TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение и управление существующим API Gateway"
-          else
-            # Если не найден или yc auth failed - по умолчанию создаем (если уже существует, Terraform выдаст ошибку)
-            echo "API_GATEWAY_EXISTS=false" >> $GITHUB_ENV
-            echo "✓ API Gateway '$API_GATEWAY_NAME' not found (or yc auth failed) - will attempt to create"
-          fi
+          yc config profile create ci || true
+          yc config set token "$YC_TOKEN"
+          yc config set cloud-id "$YC_CLOUD_ID"
+          yc config set folder-id "$YC_FOLDER_ID"
 
-      - name: Создание terraform.tfvars
-        working-directory: terraform/serverless
+      - name: Generate terraform.tfvars
         env:
-          API_GATEWAY_EXISTS: ${{ env.API_GATEWAY_EXISTS }}
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+          YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_ZONE: ${{ secrets.YC_ZONE }}
+          STATIC_BUCKET_NAME: ${{ secrets.STATIC_BUCKET_NAME }}
         run: |
-          # Определяем значение create_api_gateway на основе проверки
-          if [ "$API_GATEWAY_EXISTS" = "true" ]; then
-            CREATE_API_GATEWAY="false"
-          else
-            CREATE_API_GATEWAY="true"
-          fi
-          
-          cat > terraform.tfvars <<EOF
-          yc_token = "${{ secrets.YC_IAM_TOKEN }}"
-          yc_cloud_id = "${{ secrets.YC_CLOUD_ID }}"
-          yc_folder_id = "${{ secrets.YC_FOLDER_ID }}"
-          yc_zone = "${{ secrets.YC_ZONE }}"
-          
-          backend_image = "cr.yandex/${{ secrets.REGISTRY_ID }}/backend:${{ env.IMAGE_TAG }}"
-          frontend_image = "cr.yandex/${{ secrets.REGISTRY_ID }}/frontend:latest"
-          
-          container_registry_id = "${{ secrets.REGISTRY_ID }}"
-          
-          static_bucket_name = "${{ secrets.STATIC_BUCKET_NAME }}"
+          cat > "$TFVARS_FILE" <<EOFVARS
+          yc_token = "$YC_TOKEN"
+          yc_cloud_id = "$YC_CLOUD_ID"
+          yc_folder_id = "$YC_FOLDER_ID"
+          yc_zone = "${YC_ZONE:-ru-central1-a}"
+
+          project_name = "devops-portfolio-serverless"
+          environment  = "dev"
+
+          container_registry_name = "kulibin-devops-portfolio"
+          backend_image_tag = "latest"
+
+          backend_memory_mb   = 256
+          backend_cpu         = 0.1
+          backend_concurrency = 8
+          backend_env         = {}
+
+          frontend_image            = ""
+          frontend_memory_mb        = 128
+          frontend_cpu              = 0.05
+          frontend_concurrency      = 8
+          frontend_env              = {}
+          enable_frontend_container = false
+
+          static_bucket_name = "${STATIC_BUCKET_NAME}"
           static_allowed_origins = [
-            "https://${{ secrets.STATIC_BUCKET_NAME }}.website.yandexcloud.net",
+            "https://${STATIC_BUCKET_NAME}.website.yandexcloud.net",
           ]
           api_allowed_origins = [
-            "https://${{ secrets.STATIC_BUCKET_NAME }}.website.yandexcloud.net",
-            "http://localhost:3000",
-            "http://localhost:5173",
+            "https://${STATIC_BUCKET_NAME}.website.yandexcloud.net",
           ]
-          
-          # TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение существующего API Gateway
-          create_api_gateway = $CREATE_API_GATEWAY
-          EOF
 
-      - name: Инициализация Terraform
-        working-directory: terraform/serverless
-        env:
-          # Используем IAM токен для terraform
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
-        run: terraform init
+          create_api_gateway = true
+          EOFVARS
 
-      - name: Удаление существующих сервисных аккаунтов
-        working-directory: terraform/serverless
-        env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
+      - name: Terraform bootstrap apply
         run: |
-          # Устанавливаем yc CLI
-          curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-          export PATH="$PATH:$HOME/yandex-cloud/bin"
-          
-          # Авторизуемся в yc через токен (используем переменную окружения)
-          # yc CLI автоматически использует YC_TOKEN из окружения
-          export YC_TOKEN="$YC_TOKEN"
-          export YC_FOLDER_ID="${{ secrets.YC_FOLDER_ID }}"
-          export YC_CLOUD_ID="${{ secrets.YC_CLOUD_ID }}"
-          
-          # Также настраиваем через config для надежности
-          yc config set token "$YC_TOKEN" || true
-          yc config set folder-id "${{ secrets.YC_FOLDER_ID }}" || true
-          yc config set cloud-id "${{ secrets.YC_CLOUD_ID }}" || true
-          
-          # Проверяем авторизацию
-          echo "Testing yc authentication..."
-          if yc iam service-account list --format json >/dev/null 2>&1; then
-            echo "✓ yc authentication successful"
-          else
-            echo "✗ yc authentication failed - trying alternative method..."
-            # Пробуем через переменную окружения напрямую
-            YC_TOKEN="$YC_TOKEN" yc iam service-account list --format json >/dev/null 2>&1 && echo "✓ yc authentication successful (via env var)" || echo "✗ yc authentication still failed"
-          fi
-          
-          # Получаем project_name из terraform.tfvars или используем дефолт
-          PROJECT_NAME=$(grep -E '^project_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
-          if [ -z "$PROJECT_NAME" ]; then
-            PROJECT_NAME="devops-portfolio-serverless"
-          fi
-          
-          echo "Using project_name: '$PROJECT_NAME'"
-          
-          # Имена сервисных аккаунтов
-          SERVERLESS_SA_NAME="${PROJECT_NAME}-serverless-sa"
-          STATIC_SITE_SA_NAME="${PROJECT_NAME}-static-site"
-          
-          echo "Checking for existing service accounts: '$SERVERLESS_SA_NAME' and '$STATIC_SITE_SA_NAME'"
-          
-          # Пробуем найти и удалить по имени
-          SERVERLESS_SA_ID=$(yc iam service-account get --name "$SERVERLESS_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-          if [ -n "$SERVERLESS_SA_ID" ]; then
-            echo "Deleting existing service account: $SERVERLESS_SA_NAME ($SERVERLESS_SA_ID)"
-            yc iam service-account delete --id "$SERVERLESS_SA_ID" --format json 2>&1 || echo "Failed to delete or already deleted"
-          else
-            echo "Service account $SERVERLESS_SA_NAME not found by name"
-          fi
-          
-          STATIC_SITE_SA_ID=$(yc iam service-account get --name "$STATIC_SITE_SA_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-          if [ -n "$STATIC_SITE_SA_ID" ]; then
-            echo "Deleting existing service account: $STATIC_SITE_SA_NAME ($STATIC_SITE_SA_ID)"
-            yc iam service-account delete --id "$STATIC_SITE_SA_ID" --format json 2>&1 || echo "Failed to delete or already deleted"
-          else
-            echo "Service account $STATIC_SITE_SA_NAME not found by name"
-          fi
-          
-          # Агрессивно удаляем по известным ID (независимо от имени)
-          echo "Attempting to delete service accounts by known IDs..."
-          for known_id in "ajebh4qukejfcj3vurm1" "aje6eo39svoevpsmv61o"; do
-            echo "Checking if service account $known_id exists..."
-            if yc iam service-account get --id "$known_id" --format json >/dev/null 2>&1; then
-              echo "Found service account $known_id, deleting..."
-              yc iam service-account delete --id "$known_id" --format json 2>&1 && echo "Successfully deleted $known_id" || echo "Failed to delete $known_id (may have dependencies)"
-            else
-              echo "Service account $known_id not found (already deleted or doesn't exist)"
-            fi
-          done
-          
-          echo "Cleanup completed. Attempting to import known service accounts into Terraform state..."
-          echo "This prevents 'AlreadyExists' errors if the accounts still exist."
-          
-          # Пробуем импортировать известные сервисные аккаунты напрямую через Terraform
-          # Terraform сам проверит существование и либо импортирует, либо проигнорирует ошибку
-          SERVERLESS_SA_ID="ajebh4qukejfcj3vurm1"
-          STATIC_SITE_SA_ID="aje6eo39svoevpsmv61o"
-          
-          # Импортируем serverless SA (игнорируем ошибки - если уже в state или не существует, это нормально)
-          echo "📥 Attempting to import serverless service account ($SERVERLESS_SA_ID)..."
-          if terraform import yandex_iam_service_account.serverless "$SERVERLESS_SA_ID" 2>&1; then
-            echo "  ✓ Successfully imported serverless service account"
-          else
-            echo "  ℹ️  Import skipped (resource may not exist, already in state, or name mismatch - this is OK)"
-          fi
-          
-          # Импортируем static_site SA
-          echo "📥 Attempting to import static_site service account ($STATIC_SITE_SA_ID)..."
-          if terraform import yandex_iam_service_account.static_site "$STATIC_SITE_SA_ID" 2>&1; then
-            echo "  ✓ Successfully imported static_site service account"
-          else
-            echo "  ℹ️  Import skipped (resource may not exist, already in state, or name mismatch - this is OK)"
-          fi
-          
-          echo "✅ Service account import attempt completed"
-          
-          # Импортируем другие существующие ресурсы
-          echo ""
-          echo "Attempting to import other existing resources..."
-          
-          # Получаем имя бакета из terraform.tfvars
-          BUCKET_NAME=$(grep -E '^static_bucket_name\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)".*/\1/' || echo "")
-          if [ -n "$BUCKET_NAME" ]; then
-            echo "📥 Attempting to import storage bucket ($BUCKET_NAME)..."
-            if terraform import yandex_storage_bucket.static_site "$BUCKET_NAME" 2>&1; then
-              echo "  ✓ Successfully imported storage bucket"
-            else
-              echo "  ℹ️  Import skipped (bucket may not exist, already in state, or name mismatch - this is OK)"
-            fi
-          fi
-          
-          # Проверяем, что уже в state
-          echo "Checking current Terraform state..."
-          terraform state list 2>/dev/null || echo "  (No state file yet)"
-          
-          # Импортируем serverless container (нужен ID, получаем через data source)
-          CONTAINER_NAME="devops-portfolio-serverless-backend"
-          echo "📥 Attempting to import serverless container ($CONTAINER_NAME)..."
-          
-          # Создаем временный файл с data source для получения ID контейнера
-          cat > container_import.tf <<'EOF'
-          data "yandex_serverless_container" "existing_backend" {
-            name = "devops-portfolio-serverless-backend"
-          }
-          
-          output "container_id" {
-            value = try(data.yandex_serverless_container.existing_backend.id, "")
-          }
-          EOF
-          
-          # Инициализируем Terraform снова для загрузки data source
-          terraform init -upgrade >/dev/null 2>&1 || true
-          
-          # Пробуем получить ID контейнера через terraform apply для data source и output
-          # Игнорируем ошибки если контейнер не найден
-          terraform apply -auto-approve -target=data.yandex_serverless_container.existing_backend -target=output.container_id >/dev/null 2>&1 || true
-          CONTAINER_ID=$(terraform output -raw container_id 2>/dev/null || echo "")
-          
-          # Удаляем временный файл
-          rm -f container_import.tf
-          
-          if [ -n "$CONTAINER_ID" ] && [ "$CONTAINER_ID" != "null" ] && [ "$CONTAINER_ID" != "" ]; then
-            echo "  Found container ID: $CONTAINER_ID"
-            if terraform import yandex_serverless_container.backend "$CONTAINER_ID" 2>&1; then
-              echo "  ✓ Successfully imported serverless container"
-            else
-              echo "  ℹ️  Import failed (container may already be in state or name mismatch)"
-            fi
-          else
-            echo "  ℹ️  Container not found via data source (may not exist or need different approach)"
-            echo "  Note: If you see 'Container already exists' error later, container exists but needs manual import with ID"
-            
-            # Если контейнер не импортировался, пробуем удалить его
-            echo "🗑️  Attempting to delete existing serverless container ($CONTAINER_NAME) if it exists..."
-            if yc serverless container get --name "$CONTAINER_NAME" --format json >/dev/null 2>&1; then
-              CONTAINER_ID_FOR_DELETE=$(yc serverless container get --name "$CONTAINER_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-              if [ -n "$CONTAINER_ID_FOR_DELETE" ]; then
-                echo "  Found container ID: $CONTAINER_ID_FOR_DELETE, deleting..."
-                yc serverless container delete --id "$CONTAINER_ID_FOR_DELETE" 2>&1 && echo "  ✓ Successfully deleted container" || echo "  ✗ Failed to delete container (may have dependencies)"
-              fi
-            else
-              echo "  ℹ️  Container not found (may not exist or yc auth failed)"
-            fi
-          fi
-          if [ -z "$CONTAINER_ID" ] || [ "$CONTAINER_ID" = "null" ] || [ "$CONTAINER_ID" = "" ]; then
-            echo "🗑️  Attempting to delete existing serverless container ($CONTAINER_NAME) if it exists..."
-            if yc serverless container get --name "$CONTAINER_NAME" --format json >/dev/null 2>&1; then
-              CONTAINER_ID_FOR_DELETE=$(yc serverless container get --name "$CONTAINER_NAME" --format json 2>/dev/null | jq -r '.id // empty' || echo "")
-              if [ -n "$CONTAINER_ID_FOR_DELETE" ]; then
-                echo "  Found container ID: $CONTAINER_ID_FOR_DELETE, deleting..."
-                yc serverless container delete --id "$CONTAINER_ID_FOR_DELETE" 2>&1 && echo "  ✓ Successfully deleted container" || echo "  ✗ Failed to delete container (may have dependencies)"
-              fi
-            else
-              echo "  ℹ️  Container not found (may not exist or yc auth failed)"
-            fi
-          fi
+          terraform -chdir=terraform/serverless/bootstrap init
+          terraform -chdir=terraform/serverless/bootstrap apply -auto-approve -var-file=../terraform.tfvars
 
-      - name: Применение Terraform
-        working-directory: terraform/serverless
-        env:
-          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
-          TF_INPUT: "false"
+      - name: Build and push backend image
+        run: ./scripts/serverless-build-push-backend.sh
+
+      - name: Terraform deploy apply
         run: |
-          # Пробуем terraform apply
-          set +e  # Не прерывать выполнение при ошибке
-          terraform apply -auto-approve 2>&1 | tee /tmp/terraform-apply.log
-          APPLY_EXIT_CODE=${PIPESTATUS[0]}
-          set -e
-          
-          if [ $APPLY_EXIT_CODE -eq 0 ]; then
-            echo "✓ Terraform apply completed successfully"
-          else
-            # Проверяем, была ли ошибка "Duplicate name" для API Gateway
-            if grep -q "Duplicate name.*devops-portfolio-serverless-api" /tmp/terraform-apply.log || \
-               grep -q "yandex_api_gateway.backend.*Duplicate name" /tmp/terraform-apply.log; then
-              echo ""
-              echo "⚠️  API Gateway already exists (Duplicate name error)"
-              echo "ℹ️  This is expected - API Gateway exists but Terraform import is not supported"
-              echo "ℹ️  Continuing with other resources..."
-              echo "TODO: ТРЕБУЕТСЯ ПРАВКА - автоматическое обнаружение существующего API Gateway"
-              echo ""
-              
-              # Пробуем применить остальные ресурсы, исключая API Gateway
-              # Используем terraform apply с явным указанием ресурсов через -target
-              echo "Applying resources excluding API Gateway..."
-              terraform apply -auto-approve \
-                -target=yandex_iam_service_account.serverless \
-                -target=yandex_iam_service_account.static_site \
-                -target=yandex_iam_service_account_static_access_key.static_site \
-                -target=yandex_resourcemanager_folder_iam_member.serverless_admin \
-                -target=yandex_resourcemanager_folder_iam_member.cr_puller \
-                -target=yandex_resourcemanager_folder_iam_member.static_site_storage_editor \
-                -target=yandex_container_registry_iam_binding.registry_puller \
-                -target=yandex_serverless_container.backend \
-                -target=yandex_serverless_container_iam_binding.backend_public \
-                -target=yandex_storage_bucket.static_site 2>&1 || {
-                  echo "⚠️  Some resources may have failed, but continuing..."
-                }
-              
-              echo "✓ Completed apply (API Gateway skipped as it already exists)"
-            else
-              echo "✗ Terraform apply failed with error (not related to API Gateway)"
-              echo "Error output:"
-              cat /tmp/terraform-apply.log
-              exit $APPLY_EXIT_CODE
-            fi
-          fi
+          terraform -chdir=terraform/serverless/deploy init
+          terraform -chdir=terraform/serverless/deploy apply -auto-approve -var-file=../terraform.tfvars
 
-      - name: Сохранение Terraform outputs
-        working-directory: terraform/serverless
-        run: terraform output -json > terraform-outputs.json
+      - name: Build frontend
+        run: ./scripts/serverless-build-frontend.sh
 
-      - name: Загрузка артефактов Terraform
-        uses: actions/upload-artifact@v4  # Сохраняет состояние и выводы Terraform как артефакты
-        with:
-          name: terraform-state
-          path: terraform/serverless/
-          retention-days: 1
-  build-frontend:
-    if: ${{ false }}
-    name: Сборка и деплой фронтенда
+      - name: Upload frontend to Object Storage
+        run: ./scripts/serverless-upload-frontend.sh
+
+      - name: Print outputs
+        run: |
+          echo "Bootstrap outputs:"
+          terraform -chdir=terraform/serverless/bootstrap output
+          echo "Deploy outputs:"
+          terraform -chdir=terraform/serverless/deploy output
+
+  destroy-serverless:
+    name: Destroy Serverless Infrastructure
     runs-on: ubuntu-latest
-    needs: deploy-infra
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy' }}
+
     steps:
-      - name: Получение кода
-        uses: actions/checkout@v4  # Получает исходники для фронтенда
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Загрузка артефактов Terraform
-        uses: actions/download-artifact@v4  # Загружает сохранённые артефакты Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
-          name: terraform-state
-          path: terraform/serverless/
+          terraform_version: 1.6.6
 
-      - name: Установка Yandex Cloud CLI
+      - name: Install Yandex Cloud CLI
         run: |
-          curl https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
-          export PATH="$PATH:$HOME/yandex-cloud/bin"
-          echo "$HOME/yandex-cloud/bin" >> $GITHUB_PATH
-          yc --version
+          curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash -s -- -a
+          echo "$HOME/yandex-cloud/bin" >> "$GITHUB_PATH"
 
-      - name: Настройка Node.js
-        uses: actions/setup-node@v4  # Устанавливает Node.js и настраивает кэш npm
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: src/frontend/package-lock.json
-
-      - name: Извлечение Terraform outputs
-        working-directory: terraform/serverless
+      - name: Configure yc profile
         env:
           YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
-          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
-          # Добавляем путь к yc CLI в PATH (если установлен в предыдущем шаге)
-          export PATH="$PATH:$HOME/yandex-cloud/bin"
-          
-          export STATIC_BUCKET_NAME=$(jq -r '.static_bucket_name.value' terraform-outputs.json)
-          export AWS_ACCESS_KEY_ID=$(jq -r '.static_site_access_key.value' terraform-outputs.json)
-          export AWS_SECRET_ACCESS_KEY=$(jq -r '.static_site_secret_key.value' terraform-outputs.json)
-          
-          # Получаем API Gateway endpoint (может быть null если не создан)
-          API_GATEWAY_ENDPOINT_RAW=$(jq -r '.api_gateway_endpoint.value' terraform-outputs.json)
-          
-          # Проверяем, что это не null и не пустая строка
-          if [ "$API_GATEWAY_ENDPOINT_RAW" != "null" ] && [ -n "$API_GATEWAY_ENDPOINT_RAW" ]; then
-            API_GATEWAY_ENDPOINT="$API_GATEWAY_ENDPOINT_RAW"
-            echo "✓ API Gateway endpoint from Terraform: $API_GATEWAY_ENDPOINT"
-          else
-            echo "ℹ️  API Gateway endpoint not in Terraform output (may already exist)"
-            echo "Attempting to get API Gateway endpoint via yc CLI..."
-            
-            # Устанавливаем yc CLI если еще не установлен
-            if ! command -v yc &> /dev/null; then
-              curl -s https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash >/dev/null 2>&1
-              export PATH="$PATH:$HOME/yandex-cloud/bin"
-            fi
-            
-            # Настраиваем авторизацию
-            export YC_TOKEN="$YC_TOKEN"
-            yc config set token "$YC_TOKEN" || true
-            yc config set folder-id "$YC_FOLDER_ID" || true
-            yc config set cloud-id "$YC_CLOUD_ID" || true
-            
-            # Проверяем авторизацию
-            if ! yc iam service-account list --format json >/dev/null 2>&1; then
-              echo "⚠️  yc authentication failed, trying alternative method..."
-              # Пробуем через переменные окружения
-              export YC_TOKEN="$YC_TOKEN"
-            fi
-            
-            # Пробуем получить endpoint существующего API Gateway
-            API_GATEWAY_NAME="devops-portfolio-serverless-api"
-            echo "Looking for API Gateway: $API_GATEWAY_NAME"
-            
-            # Сначала пробуем через get по имени
-            API_GATEWAY_DOMAIN=$(yc serverless api-gateway get --name "$API_GATEWAY_NAME" --format json 2>&1 | jq -r '.domain // empty' || echo "")
-            
-            # Если не получилось, пробуем через list и фильтрацию
-            if [ -z "$API_GATEWAY_DOMAIN" ] || [ "$API_GATEWAY_DOMAIN" = "null" ]; then
-              echo "Trying to list all API Gateways..."
-              API_GATEWAY_DOMAIN=$(yc serverless api-gateway list --format json 2>&1 | jq -r ".[] | select(.name == \"$API_GATEWAY_NAME\") | .domain // empty" || echo "")
-            fi
-            
-            if [ -n "$API_GATEWAY_DOMAIN" ] && [ "$API_GATEWAY_DOMAIN" != "null" ] && [ "$API_GATEWAY_DOMAIN" != "" ]; then
-              API_GATEWAY_ENDPOINT="https://${API_GATEWAY_DOMAIN}"
-              echo "✓ Found existing API Gateway endpoint: $API_GATEWAY_ENDPOINT"
-            else
-              echo "✗ Could not get API Gateway endpoint"
-              echo "  API Gateway may not exist or yc authentication failed"
-              echo "  Attempting to use backend URL directly..."
-              # Пробуем использовать backend URL напрямую
-              BACKEND_URL=$(jq -r '.backend_url.value' terraform-outputs.json)
-              if [ -n "$BACKEND_URL" ] && [ "$BACKEND_URL" != "null" ]; then
-                API_GATEWAY_ENDPOINT="$BACKEND_URL"
-                echo "⚠️  Using backend URL as fallback: $API_GATEWAY_ENDPOINT"
-              else
-                echo "✗ No API Gateway endpoint available and no backend URL found"
-                exit 1
-              fi
-            fi
-          fi
-          
-          echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}" >> $GITHUB_ENV
-          echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}" >> $GITHUB_ENV
-          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> $GITHUB_ENV
-          echo "API_GATEWAY_ENDPOINT=${API_GATEWAY_ENDPOINT}"
-          echo "STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}"
+          yc config profile create ci || true
+          yc config set token "$YC_TOKEN"
+          yc config set cloud-id "$YC_CLOUD_ID"
+          yc config set folder-id "$YC_FOLDER_ID"
 
-      - name: Сборка и деплой фронтенда
-        working-directory: CI
+      - name: Generate terraform.tfvars
         env:
-          API_GATEWAY_ENDPOINT: ${{ env.API_GATEWAY_ENDPOINT }}
-          STATIC_BUCKET_NAME: ${{ env.STATIC_BUCKET_NAME }}
-          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          YC_IAM_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
-          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_TOKEN: ${{ secrets.YC_IAM_TOKEN }}
           YC_CLOUD_ID: ${{ secrets.YC_CLOUD_ID }}
+          YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
+          YC_ZONE: ${{ secrets.YC_ZONE }}
+          STATIC_BUCKET_NAME: ${{ secrets.STATIC_BUCKET_NAME }}
         run: |
-          chmod +x build_frontend.sh
-          ./build_frontend.sh
+          cat > "$TFVARS_FILE" <<EOFVARS
+          yc_token = "$YC_TOKEN"
+          yc_cloud_id = "$YC_CLOUD_ID"
+          yc_folder_id = "$YC_FOLDER_ID"
+          yc_zone = "${YC_ZONE:-ru-central1-a}"
 
+          project_name = "devops-portfolio-serverless"
+          environment  = "dev"
+
+          container_registry_name = "kulibin-devops-portfolio"
+          backend_image_tag = "latest"
+
+          backend_memory_mb   = 256
+          backend_cpu         = 0.1
+          backend_concurrency = 8
+          backend_env         = {}
+
+          frontend_image            = ""
+          frontend_memory_mb        = 128
+          frontend_cpu              = 0.05
+          frontend_concurrency      = 8
+          frontend_env              = {}
+          enable_frontend_container = false
+
+          static_bucket_name = "${STATIC_BUCKET_NAME}"
+          static_allowed_origins = [
+            "https://${STATIC_BUCKET_NAME}.website.yandexcloud.net",
+          ]
+          api_allowed_origins = [
+            "https://${STATIC_BUCKET_NAME}.website.yandexcloud.net",
+          ]
+
+          create_api_gateway = true
+          EOFVARS
+
+      - name: Destroy infrastructure
+        run: ./scripts/serverless-destroy-all.sh

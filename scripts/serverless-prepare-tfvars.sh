@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TFVARS_FILE="$ROOT_DIR/terraform/serverless/terraform.tfvars"
+TFVARS_EXAMPLE_FILE="$ROOT_DIR/terraform/serverless/terraform.tfvars.example"
 
 if ! command -v yc >/dev/null 2>&1; then
   echo "yc is not installed" >&2
@@ -10,8 +11,13 @@ if ! command -v yc >/dev/null 2>&1; then
 fi
 
 if [[ ! -f "$TFVARS_FILE" ]]; then
-  echo "terraform.tfvars not found: $TFVARS_FILE" >&2
-  exit 1
+  if [[ -f "$TFVARS_EXAMPLE_FILE" ]]; then
+    cp "$TFVARS_EXAMPLE_FILE" "$TFVARS_FILE"
+    echo "Created $TFVARS_FILE from terraform.tfvars.example"
+  else
+    echo "terraform.tfvars not found and example is missing: $TFVARS_FILE" >&2
+    exit 1
+  fi
 fi
 
 escape_sed_repl() {
@@ -36,6 +42,38 @@ get_hcl_string_var() {
   sed -nE "s|^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\".*$|\1|p" "$TFVARS_FILE" | head -n1
 }
 
+ensure_var_with_prompt() {
+  local key="$1"
+  local prompt_text="$2"
+  local suggested_value="${3:-}"
+  local current_value
+  current_value="$(get_hcl_string_var "$key")"
+
+  if [[ -n "$current_value" ]]; then
+    return 0
+  fi
+
+  if [[ ! -t 0 ]]; then
+    echo "Variable '$key' is empty in $TFVARS_FILE and interactive input is unavailable." >&2
+    echo "Fill '$key' manually and rerun." >&2
+    exit 1
+  fi
+
+  local user_value=""
+  while [[ -z "$user_value" ]]; do
+    if [[ -n "$suggested_value" ]]; then
+      read -r -p "$prompt_text [$suggested_value]: " user_value
+      if [[ -z "$user_value" ]]; then
+        user_value="$suggested_value"
+      fi
+    else
+      read -r -p "$prompt_text: " user_value
+    fi
+  done
+
+  set_hcl_string_var "$key" "$user_value"
+}
+
 TOKEN="$(yc iam create-token | tr -d '\r\n')"
 if [[ -z "$TOKEN" ]]; then
   echo "Failed to get yc IAM token. Check 'yc init' and active profile." >&2
@@ -44,20 +82,16 @@ fi
 set_hcl_string_var "yc_token" "$TOKEN"
 
 CLOUD_ID="$(get_hcl_string_var "yc_cloud_id")"
-if [[ -z "$CLOUD_ID" ]]; then
-  CLOUD_ID="$(yc config get cloud-id 2>/dev/null || true)"
-  if [[ -n "$CLOUD_ID" ]]; then
-    set_hcl_string_var "yc_cloud_id" "$CLOUD_ID"
-  fi
-fi
+SUGGESTED_CLOUD_ID="$(yc config get cloud-id 2>/dev/null || true)"
+ensure_var_with_prompt "yc_cloud_id" "Enter yc_cloud_id" "$SUGGESTED_CLOUD_ID"
+CLOUD_ID="$(get_hcl_string_var "yc_cloud_id")"
 
 FOLDER_ID="$(get_hcl_string_var "yc_folder_id")"
-if [[ -z "$FOLDER_ID" ]]; then
-  FOLDER_ID="$(yc config get folder-id 2>/dev/null || true)"
-  if [[ -n "$FOLDER_ID" ]]; then
-    set_hcl_string_var "yc_folder_id" "$FOLDER_ID"
-  fi
-fi
+SUGGESTED_FOLDER_ID="$(yc config get folder-id 2>/dev/null || true)"
+ensure_var_with_prompt "yc_folder_id" "Enter yc_folder_id" "$SUGGESTED_FOLDER_ID"
+FOLDER_ID="$(get_hcl_string_var "yc_folder_id")"
+
+ensure_var_with_prompt "static_bucket_name" "Enter static_bucket_name" "kulibin-devops-portfolio"
 
 ZONE="$(get_hcl_string_var "yc_zone")"
 if [[ -z "$ZONE" ]]; then
