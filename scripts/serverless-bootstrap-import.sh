@@ -45,7 +45,7 @@ import_if_missing() {
     return 0
   fi
   echo "Importing $addr <= $id"
-  terraform -chdir="$BOOTSTRAP_DIR" import -var-file=../terraform.tfvars "$addr" "$id" >/dev/null
+  terraform -chdir="$BOOTSTRAP_DIR" import -var-file="$TFVARS_FILE" "$addr" "$id" >/dev/null
 }
 
 FOLDER_ID="$(get_hcl_string_var "yc_folder_id")"
@@ -60,10 +60,19 @@ fi
 SERVERLESS_SA_NAME="${PROJECT_NAME}-serverless-sa"
 STATIC_SA_NAME="${PROJECT_NAME}-static-site"
 
-SERVERLESS_SA_ID="$({ yc iam service-account list --format json | jq -r --arg name "$SERVERLESS_SA_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .id // empty'; } || true)"
-STATIC_SA_ID="$({ yc iam service-account list --format json | jq -r --arg name "$STATIC_SA_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .id // empty'; } || true)"
-REGISTRY_ID="$({ yc container registry list --format json | jq -r --arg name "$REGISTRY_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder and .status != "DELETING")) | first | .id // empty'; } || true)"
-EXISTING_BUCKET="$({ yc storage bucket list --format json | jq -r --arg name "$BUCKET_NAME" 'map(select(.name == $name)) | first | .name // empty'; } || true)"
+if [[ -z "$FOLDER_ID" ]]; then
+  echo "yc_folder_id is empty in $TFVARS_FILE" >&2
+  exit 1
+fi
+
+YC_SERVICE_ACCOUNTS_JSON="$(yc iam service-account list --format json)"
+YC_REGISTRIES_JSON="$(yc container registry list --format json)"
+YC_BUCKETS_JSON="$(yc storage bucket list --format json)"
+
+SERVERLESS_SA_ID="$(jq -r --arg name "$SERVERLESS_SA_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .id // empty' <<<"$YC_SERVICE_ACCOUNTS_JSON")"
+STATIC_SA_ID="$(jq -r --arg name "$STATIC_SA_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder)) | first | .id // empty' <<<"$YC_SERVICE_ACCOUNTS_JSON")"
+REGISTRY_ID="$(jq -r --arg name "$REGISTRY_NAME" --arg folder "$FOLDER_ID" 'map(select(.name == $name and .folder_id == $folder and .status != "DELETING")) | first | .id // empty' <<<"$YC_REGISTRIES_JSON")"
+EXISTING_BUCKET="$(jq -r --arg name "$BUCKET_NAME" 'map(select(.name == $name)) | first | .name // empty' <<<"$YC_BUCKETS_JSON")"
 
 import_if_missing "yandex_iam_service_account.serverless" "$SERVERLESS_SA_ID"
 import_if_missing "yandex_iam_service_account.static_site" "$STATIC_SA_ID"

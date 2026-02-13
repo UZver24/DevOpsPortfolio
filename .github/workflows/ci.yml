@@ -53,7 +53,7 @@ jobs:
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
           yc config profile create ci || true
-          yc config set token "$YC_TOKEN"
+          yc config set iam-token "$YC_TOKEN"
           yc config set cloud-id "$YC_CLOUD_ID"
           yc config set folder-id "$YC_FOLDER_ID"
 
@@ -153,7 +153,7 @@ jobs:
           YC_FOLDER_ID: ${{ secrets.YC_FOLDER_ID }}
         run: |
           yc config profile create ci || true
-          yc config set token "$YC_TOKEN"
+          yc config set iam-token "$YC_TOKEN"
           yc config set cloud-id "$YC_CLOUD_ID"
           yc config set folder-id "$YC_FOLDER_ID"
 
