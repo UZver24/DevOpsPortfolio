@@ -32,7 +32,7 @@ get_hcl_string_var() {
 
 get_hcl_bool_var() {
   local key="$1"
-  sed -nE "s|^[[:space:]]*${key}[[:space:]]*=[[:space:]]*(true|false)[[:space:]]*$|\1|p" "$TFVARS_FILE" | head -n1
+  sed -n "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\\(true\\|false\\)[[:space:]]*$/\\1/p" "$TFVARS_FILE" | head -n1
 }
 
 state_has() {
