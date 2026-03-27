@@ -24,6 +24,27 @@ escape_sed_repl() {
   printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
 }
 
+generate_backend_image_tag() {
+  local timestamp
+  local git_part=""
+  local dirty_part=""
+
+  timestamp="$(date -u +%Y%m%d-%H%M%S)"
+
+  if command -v git >/dev/null 2>&1 && git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git_part="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || true)"
+    if [[ -n "$git_part" ]] && ! git -C "$ROOT_DIR" diff --quiet -- src/backend terraform/serverless scripts 2>/dev/null; then
+      dirty_part="-dirty"
+    fi
+  fi
+
+  if [[ -n "$git_part" ]]; then
+    printf '%s' "${timestamp}-${git_part}${dirty_part}"
+  else
+    printf '%s' "$timestamp"
+  fi
+}
+
 set_hcl_string_var() {
   local key="$1"
   local value="$2"
@@ -103,10 +124,11 @@ if [[ -z "$REGISTRY_NAME" ]]; then
   set_hcl_string_var "container_registry_name" "kulibin-devops-portfolio"
 fi
 
-BACKEND_TAG="$(get_hcl_string_var "backend_image_tag")"
+BACKEND_TAG="${BACKEND_IMAGE_TAG:-}"
 if [[ -z "$BACKEND_TAG" ]]; then
-  set_hcl_string_var "backend_image_tag" "latest"
+  BACKEND_TAG="$(generate_backend_image_tag)"
 fi
+set_hcl_string_var "backend_image_tag" "$BACKEND_TAG"
 
 MISSING=()
 for key in yc_token yc_cloud_id yc_folder_id yc_zone static_bucket_name; do
@@ -122,4 +144,4 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
-echo "terraform/serverless/terraform.tfvars updated (token refreshed)."
+echo "terraform/serverless/terraform.tfvars updated (token refreshed, backend_image_tag=$BACKEND_TAG)."

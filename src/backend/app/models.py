@@ -47,6 +47,10 @@ class Project(BaseModel):
     description: str
     technologies: List[str]
     github_url: Optional[str] = None
+    site_url: Optional[str] = None
+    blog_url: Optional[str] = None
+    blog_label: Optional[str] = None
+    featured: bool = False
     status: str
 
 
@@ -61,4 +65,3 @@ class ContactResponse(BaseModel):
     github: str
     linkedin: Optional[str] = None
     telegram: Optional[str] = None
-

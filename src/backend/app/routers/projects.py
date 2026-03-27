@@ -13,6 +13,17 @@ async def get_projects():
     return ProjectsResponse(
         projects=[
             {
+                "id": 2,
+                "name": "Микрофабрика",
+                "description": "Инженерная лаборатория «Микрофабрика». Прототипирование, ЧПУ, R&D. От идеи до детали. Официальный канал проекта.",
+                "technologies": ["CAD/CAM", "ЧПУ", "Промышленный дизайн", "Прототипирование", "Опытные образцы", "Пилотные серии", "Финишная обработка"],
+                "site_url": "https://mikrofabrika.website.yandexcloud.net/",
+                "blog_url": "https://t.me/microfabrica",
+                "blog_label": "Telegram",
+                "featured": True,
+                "status": "Активно развивается"
+            },
+            {
                 "id": 1,
                 "name": "DevOps Portfolio",
                 "description": "Сайт-визитка с демонстрацией DevOps навыков. Включает полный стек: Kubernetes, CI/CD, мониторинг, Terraform, Helm. Развёрнут в Yandex Cloud с использованием serverless технологий.",
@@ -21,7 +32,7 @@ async def get_projects():
                 "status": "В разработке"
             },
             {
-                "id": 2,
+                "id": 3,
                 "name": "Разработка устройств полного цикла",
                 "description": "Проектирование электроники в KiCAD, 3D-моделирование корпусов в Компас-3D, FreeCAD и Blender, организация производства и управление изготовлением прототипов, формирование комплекта технической документации.",
                 "technologies": ["KiCAD", "Компас-3D", "FreeCAD", "Blender", "Python", "OpenCV"],
@@ -29,7 +40,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 3,
+                "id": 4,
                 "name": "Разработка прототипов компьютерного зрения",
                 "description": "Разработка прототипов компьютерного зрения на Python с использованием OpenCV. Создание и доработка веб-интерфейсов для управления устройствами.",
                 "technologies": ["Python", "OpenCV", "Web-интерфейсы"],
@@ -37,7 +48,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 4,
+                "id": 5,
                 "name": "Кастомизированные образы ОС для встраиваемых систем",
                 "description": "Разработка и поддержка кастомизированных образов ОС для встраиваемых систем. Автоматизация процесса сборки образов с помощью Ansible. Проведение миграции парка оборудования на актуальные LTS-версии Ubuntu. Расширение функциональности образов, интеграция сервисов Avahi (Zeroconf), SSDP.",
                 "technologies": ["Ansible", "Ubuntu", "Linux", "systemd", "Avahi", "SSDP", "ZFS", "PINN"],
@@ -45,7 +56,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 5,
+                "id": 6,
                 "name": "Автоматизация инфраструктуры с Terraform и Ansible",
                 "description": "Автоматизация развертывания и управления инфраструктурой: PostgreSQL, Docker, ClickHouse, Nginx, ElasticMQ, Minio. Оркестрация сервисов с помощью Kubernetes и управление пакетами через Helm.",
                 "technologies": ["Terraform", "Ansible", "Kubernetes", "Helm", "PostgreSQL", "Docker", "ClickHouse", "Nginx"],
@@ -53,7 +64,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 6,
+                "id": 7,
                 "name": "CI/CD автоматизация",
                 "description": "Автоматизация сборки и CI/CD: интеграция Jenkins с GitLab, добавление и настройка специализированных сборщиков. Автоматизация развертывания Jenkins в Kubernetes.",
                 "technologies": ["Jenkins", "GitLab", "Kubernetes", "Helm", "CI/CD"],
@@ -61,7 +72,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 7,
+                "id": 8,
                 "name": "Автоматизация обработки данных в облаке",
                 "description": "Автоматизация обработки данных и очередей сообщений с использованием Go и Python в облачной среде.",
                 "technologies": ["Go", "Python", "Yandex Cloud"],
@@ -69,7 +80,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 8,
+                "id": 9,
                 "name": "Реализация низкоуровневых функций безопасности",
                 "description": "Реализация полного шифрования ОС с использованием ZFS, механизм восстановления/обновления прошивок с использованием PINN.",
                 "technologies": ["ZFS", "PINN", "Linux", "Безопасность"],
@@ -77,7 +88,7 @@ async def get_projects():
                 "status": "Завершён"
             },
             {
-                "id": 9,
+                "id": 10,
                 "name": "Развёртывание удаленных стендов для тестирования",
                 "description": "Настройка удаленных стендов для тестирования на базе Pi-KVM (KVM over IP), а также серверов для развертывания обновлений и личных Git-репозиториев.",
                 "technologies": ["Pi-KVM", "KVM", "Git", "DevOps"],
@@ -86,4 +97,3 @@ async def get_projects():
             }
         ]
     )
-

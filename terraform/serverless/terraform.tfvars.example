@@ -7,7 +7,9 @@ project_name = "devops-portfolio-serverless"
 environment  = "dev"
 
 container_registry_name = "kulibin-devops-portfolio"
-backend_image_tag       = "latest"
+# Auto-updated by scripts/serverless-prepare-tfvars.sh on each deploy.
+# Set BACKEND_IMAGE_TAG in the environment if you need to force a specific tag.
+backend_image_tag       = ""
 
 backend_memory_mb  = 256
 backend_cpu        = 0.1
